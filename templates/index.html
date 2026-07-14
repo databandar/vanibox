@@ -93,30 +93,25 @@
   button:disabled { opacity: .45; cursor: wait; }
   :is(button, select, input, textarea, a, .row):focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-  /* ---------- accent atlas (tile cartogram of India) ---------- */
+  /* ---------- accent atlas (real state boundaries) ---------- */
   .atlas-layout { display: flex; gap: 1.6rem; align-items: flex-start; flex-wrap: wrap; }
   .atlas {
-    display: grid; grid-template-columns: repeat(8, 2.6rem); grid-auto-rows: 2.6rem;
-    gap: 4px; padding: 1rem; background: var(--inset);
-    border: 1px solid var(--line); border-radius: 4px; flex-shrink: 0;
+    width: 300px; flex-shrink: 0; padding: .8rem; background: var(--inset);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .atlas svg { display: block; width: 100%; height: auto; }
+  .atlas .map-label {
+    font-family: ui-monospace, Menlo, monospace; font-size: .62rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--faint); margin: .5rem 0 0; text-align: center;
   }
   .atlas-side { flex: 1; min-width: 20rem; }
-  .tile {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    border: 1px solid var(--line); border-radius: 3px; background: var(--panel);
-    color: var(--soft); cursor: pointer; padding: 0; line-height: 1.15;
-    font-family: ui-monospace, Menlo, monospace;
-  }
-  .tile b { font-size: .72rem; font-weight: 700; letter-spacing: .04em; }
-  .tile small { font-size: .58rem; color: var(--faint); }
-  .tile:hover { border-color: var(--amber-dim); color: var(--ink); }
-  .tile.active { background: var(--amber); border-color: var(--amber); color: #171110; }
-  .tile.active small { color: rgba(23,17,16,.7); }
-  .tile.lit:not(.active) {
-    border-color: var(--amber-dim); color: var(--amber);
-    box-shadow: inset 0 0 10px rgba(245,165,36,.12);
-  }
-  @media (max-width: 720px) { .atlas { grid-template-columns: repeat(8, 2.1rem); grid-auto-rows: 2.1rem; } }
+  .st { fill: var(--panel); stroke: var(--line); stroke-width: .7; }
+  .st.vaani { cursor: pointer; }
+  .st.vaani:hover { fill: #2E2419; stroke: var(--amber-dim); }
+  .st.lit { fill: #33270F; stroke: var(--amber-dim); }
+  .st.active, .st.active:hover { fill: var(--amber); stroke: var(--amber); }
+  .st.dim { fill: var(--inset); stroke: var(--line-soft); }
+  .st:focus-visible { outline: none; stroke: var(--amber); stroke-width: 1.5; }
 
   /* ---------- status line ---------- */
   .statusline { margin-top: .9rem; min-height: 1.5em; color: var(--soft); font-size: .9rem; }
@@ -169,6 +164,7 @@
   .voicebar .who { font-weight: 600; }
   .voicebar .who small { display: block; font-weight: 400; color: var(--soft); font-size: .8rem; }
   .voicebar audio { flex: 1; min-width: 220px; height: 36px; }
+  canvas.viz { flex: 1 1 160px; min-width: 120px; height: 40px; border-radius: 3px; }
 
   /* ---------- speak panel ---------- */
   .examples { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0 0; }
@@ -212,7 +208,10 @@
     </div>
     <div class="body">
       <div class="atlas-layout">
-      <div class="atlas" id="atlas" role="listbox" aria-label="Pick a state on the map"></div>
+      <div class="atlas">
+        <div id="atlas" role="listbox" aria-label="Pick a state on the map"></div>
+        <p class="map-label">Accent Atlas · lit states are in your library</p>
+      </div>
       <div class="atlas-side">
       <div class="controls">
         <label class="field">State
@@ -260,6 +259,7 @@
           <span id="vbName">—</span>
           <small id="vbMeta"></small>
         </div>
+        <canvas id="playerViz" class="viz" aria-hidden="true"></canvas>
         <audio id="player" controls></audio>
       </div>
     </div>
@@ -294,6 +294,7 @@
         Generation runs locally on your GPU (~15–30s).</p>
       <div class="statusline" id="cloneStatus"></div>
       <div class="result" id="cloneResult">
+        <canvas id="cloneViz" class="viz" aria-hidden="true"></canvas>
         <audio id="clonePlayer" controls></audio>
         <a class="download" id="cloneDownload" download="vaanibox_clone.wav">download wav</a>
       </div>
@@ -325,45 +326,43 @@
   const DISTRICT_COUNTS = {{ district_counts | tojson }};
   let curatedStates = new Set({{ curated_states | tojson }});
 
-  // Tile cartogram: rough geographic positions, one tile per state in Vaani.
-  const TILES = {
-    JammuAndKashmir:  ["JK", 3, 1], HimachalPradesh: ["HP", 3, 2], Punjab: ["PB", 2, 2],
-    Chandigarh: ["CH", 2, 3], Haryana: ["HR", 3, 3], Uttarakhand: ["UK", 4, 3],
-    Rajasthan: ["RJ", 1, 4], Delhi: ["DL", 3, 4], UttarPradesh: ["UP", 4, 4],
-    Bihar: ["BR", 5, 4], Sikkim: ["SK", 6, 4], ArunachalPradesh: ["AR", 8, 3],
-    Assam: ["AS", 7, 4], Nagaland: ["NL", 8, 4],
-    Gujarat: ["GJ", 1, 5], MadhyaPradesh: ["MP", 3, 5], Chhattisgarh: ["CG", 4, 5],
-    Jharkhand: ["JH", 5, 5], WestBengal: ["WB", 6, 5], Meghalaya: ["ML", 7, 5], Manipur: ["MN", 8, 5],
-    Maharashtra: ["MH", 2, 6], Odisha: ["OD", 5, 6], Tripura: ["TR", 7, 6], Mizoram: ["MZ", 8, 6],
-    Goa: ["GA", 1, 7], Telangana: ["TS", 3, 7], AndhraPradesh: ["AP", 4, 7],
-    Karnataka: ["KA", 2, 8], TamilNadu: ["TN", 3, 9], Kerala: ["KL", 2, 9],
-  };
-
-  function buildAtlas() {
-    const atlas = $("atlas");
-    for (const [state, [abbr, col, row]] of Object.entries(TILES)) {
-      if (!(state in DISTRICT_COUNTS)) continue;
-      const t = document.createElement("button");
-      t.className = "tile";
-      t.dataset.state = state;
-      t.title = `${state} — ${DISTRICT_COUNTS[state]} district(s)`;
-      t.setAttribute("role", "option");
-      t.style.gridColumn = col;
-      t.style.gridRow = row;
-      t.innerHTML = `<b>${abbr}</b><small>${DISTRICT_COUNTS[state]}</small>`;
-      t.addEventListener("click", () => {
-        $("state").value = state;
-        $("state").dispatchEvent(new Event("change"));
-      });
-      atlas.appendChild(t);
+  // Accent Atlas: real state boundaries (datta07/INDIAN-SHAPEFILES),
+  // preprocessed by scripts/build_map.py into compact SVG paths.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  async function buildAtlas() {
+    const map = await (await fetch("/static/india_map.json")).json();
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", map.viewBox);
+    for (const st of map.states) {
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", st.d);
+      path.classList.add("st", st.id ? "vaani" : "dim");
+      const title = document.createElementNS(SVG_NS, "title");
+      title.textContent = st.id
+        ? `${st.name} — ${DISTRICT_COUNTS[st.id]} district(s) in Vaani`
+        : `${st.name} — not covered by Vaani yet`;
+      path.appendChild(title);
+      if (st.id) {
+        path.dataset.state = st.id;
+        path.setAttribute("role", "option");
+        path.setAttribute("tabindex", "0");
+        const pick = () => {
+          $("state").value = st.id;
+          $("state").dispatchEvent(new Event("change"));
+        };
+        path.addEventListener("click", pick);
+        path.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      }
+      svg.appendChild(path);
     }
+    $("atlas").appendChild(svg);
     paintAtlas();
   }
 
   function paintAtlas() {
-    document.querySelectorAll(".tile").forEach((t) => {
-      t.classList.toggle("active", t.dataset.state === $("state").value);
-      t.classList.toggle("lit", curatedStates.has(t.dataset.state));
+    document.querySelectorAll(".st.vaani").forEach((p) => {
+      p.classList.toggle("active", p.dataset.state === $("state").value);
+      p.classList.toggle("lit", curatedStates.has(p.dataset.state));
     });
   }
   let selectedVoice = null;
@@ -511,6 +510,69 @@
       $("cloneBtn").disabled = false;
     }
   });
+
+  // ---- live waveform: Web Audio analyser -> amber frequency bars ----
+  const viz = (() => {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let actx = null;
+    const analysers = new Map(); // audio element -> AnalyserNode
+
+    function idle(g, W, H) {
+      g.clearRect(0, 0, W, H);
+      g.fillStyle = "rgba(245,165,36,.22)";
+      g.fillRect(0, H / 2 - 1, W, 2);
+    }
+
+    function draw(audioEl, canvas) {
+      const an = analysers.get(audioEl);
+      const data = new Uint8Array(an.frequencyBinCount);
+      const dpr = devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      const g = canvas.getContext("2d");
+      const W = canvas.width, H = canvas.height, mid = H / 2;
+      const bars = 44, step = Math.max(1, Math.floor((data.length * 0.72) / bars)), bw = W / bars;
+      (function frame() {
+        if (audioEl.paused || audioEl.ended) { idle(g, W, H); return; }
+        an.getByteFrequencyData(data);
+        g.clearRect(0, 0, W, H);
+        for (let i = 0; i < bars; i++) {
+          const v = data[i * step] / 255;
+          const h = Math.max(1.5 * dpr, v * mid * 0.95);
+          g.fillStyle = `rgba(245,165,36,${0.30 + v * 0.7})`;
+          g.beginPath();
+          g.roundRect(i * bw + bw * 0.2, mid - h, bw * 0.6, h * 2, bw * 0.3);
+          g.fill();
+        }
+        requestAnimationFrame(frame);
+      })();
+    }
+
+    function attach(audioEl, canvas) {
+      const g = canvas.getContext("2d");
+      requestAnimationFrame(() => idle(g, canvas.width = canvas.offsetWidth, canvas.height = canvas.offsetHeight));
+      if (reduced) return; // keep the calm static line
+      audioEl.addEventListener("play", () => {
+        try {
+          if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+          actx.resume();
+          if (!analysers.has(audioEl)) {
+            const src = actx.createMediaElementSource(audioEl);
+            const an = actx.createAnalyser();
+            an.fftSize = 256;
+            an.smoothingTimeConstant = 0.78;
+            src.connect(an);
+            an.connect(actx.destination);
+            analysers.set(audioEl, an);
+          }
+          draw(audioEl, canvas);
+        } catch (e) { /* visualizer is decoration — never block playback */ }
+      });
+    }
+    return { attach };
+  })();
+  viz.attach($("player"), $("playerViz"));
+  viz.attach($("clonePlayer"), $("cloneViz"));
 
   $("exportBtn").addEventListener("click", async () => {
     const ids = [...document.querySelectorAll(".pick:checked")].map((c) => c.dataset.id);
