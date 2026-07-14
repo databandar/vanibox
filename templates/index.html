@@ -204,6 +204,7 @@
           <input type="number" id="minScore" value="40" min="0" max="90" step="5">
         </label>
         <button id="curateBtn">Stream &amp; curate</button>
+        <button id="libraryBtn" class="ghost">My library</button>
         <button id="demoBtn" class="quiet">Demo mode</button>
       </div>
       <div class="statusline" id="status"></div>
@@ -326,7 +327,7 @@
       tr.tabIndex = 0;
       tr.innerHTML = `
         <td><button class="play-btn" aria-label="play ${s.speaker}">▶</button></td>
-        <td>${s.speaker}</td>
+        <td>${s.speaker}<br><small style="color:var(--faint)">${s.district || ""}</small></td>
         <td><span class="chip lang">${s.language}</span></td>
         <td>${s.gender || "—"}</td>
         <td><span class="meter"><span class="track"><span class="fill" style="width:${s.score}%"></span></span><b>${s.score}</b></span></td>
@@ -378,6 +379,13 @@
   $("demoBtn").addEventListener("click", () =>
     curate("/api/curate-demo", { min_score: +$("minScore").value }, $("demoBtn"),
       "Generating synthetic demo voices"));
+
+  $("libraryBtn").addEventListener("click", async () => {
+    const res = await fetch("/api/library");
+    const data = await res.json();
+    renderTable(data.speakers);
+    status($("status"), data.status + (data.speakers.length ? " Click ▶ to listen." : " Curate a district to add voices."));
+  });
 
   document.querySelectorAll(".ex").forEach((b) =>
     b.addEventListener("click", () => {

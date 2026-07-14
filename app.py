@@ -14,6 +14,7 @@ from flask import Flask, abort, jsonify, render_template, request, send_file
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from vaanibox import store
 from vaanibox.curate import build_profiles
 from vaanibox.dataset import VaaniAccessError, has_hf_token, stream_district
 from vaanibox.districts import STATES, districts_for
@@ -23,8 +24,9 @@ PACKS_DIR = Path(__file__).resolve().parent / "voice_packs"
 
 app = Flask(__name__)
 
-# Curated profiles from the most recent run, keyed by a URL-safe id.
-_profiles: dict[str, object] = {}
+# The voice library: every curated profile, keyed by a URL-safe id.
+# Backed by SQLite so it survives restarts.
+_profiles: dict[str, object] = store.load_profiles()
 
 
 def _pid(profile) -> str:
@@ -51,9 +53,11 @@ def _profiles_json(profiles) -> list[dict]:
     return out
 
 
-def _store(profiles) -> None:
-    _profiles.clear()
-    _profiles.update({_pid(p): p for p in profiles})
+def _store(profiles, persist: bool = True) -> None:
+    new = {_pid(p): p for p in profiles}
+    _profiles.update(new)  # merge into the library, don't wipe other districts
+    if persist:
+        store.save_profiles(new)
 
 
 @app.get("/")
@@ -97,13 +101,24 @@ def api_curate():
     )
 
 
+@app.get("/api/library")
+def api_library():
+    profiles = sorted(_profiles.values(), key=lambda p: -p.best_score)
+    return jsonify(
+        {
+            "speakers": _profiles_json(profiles),
+            "status": f"Voice library: {len(profiles)} curated voice(s), from every district you've explored.",
+        }
+    )
+
+
 @app.post("/api/curate-demo")
 def api_curate_demo():
     from scripts.make_demo_data import rows
 
     min_score = float(request.get_json(force=True).get("min_score", 40))
     profiles = build_profiles(rows(), min_score=min_score)
-    _store(profiles)
+    _store(profiles, persist=False)  # synthetic voices don't belong in the library
     return jsonify(
         {
             "speakers": _profiles_json(profiles),
