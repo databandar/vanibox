@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VaaniBox Studio</title>
+<style>
+  :root {
+    --bg: #14100E; --panel: #1D1613; --inset: #100C0A;
+    --ink: #F2E8D8; --soft: #A8977F; --faint: #6E604F;
+    --line: #322721; --line-soft: #292019;
+    --amber: #F5A524; --amber-dim: #8A6520; --teal: #6FB3A2; --err: #E06C55;
+  }
+  * { box-sizing: border-box; }
+  html { scrollbar-color: var(--line) var(--bg); }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.55;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .9rem 1.6rem; border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .brand { display: flex; align-items: baseline; gap: .6rem; text-decoration: none; }
+  .brand .devanagari {
+    font-family: Charter, Georgia, serif; font-size: 1.5rem; font-weight: 600;
+    color: var(--amber); text-shadow: 0 0 24px rgba(245,165,36,.35); line-height: 1;
+  }
+  .brand .name { color: var(--ink); font-weight: 600; letter-spacing: .02em; }
+  .brand .name small { color: var(--faint); font-weight: 400; }
+  .topbar .spacer { flex: 1; }
+  .signal {
+    display: inline-flex; align-items: center; gap: .45rem;
+    font-family: ui-monospace, Menlo, monospace; font-size: .7rem;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--soft);
+  }
+  .signal .led {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 8px var(--teal);
+  }
+  .signal.off .led { background: var(--err); box-shadow: 0 0 8px var(--err); }
+  .topbar a.about { color: var(--soft); font-size: .85rem; text-decoration: none; border-bottom: 1px dotted var(--faint); }
+  .topbar a.about:hover { color: var(--amber); }
+
+  .wrap { max-width: 66rem; margin: 0 auto; padding: 1.8rem 1.5rem 5rem; }
+
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    margin-top: 1.5rem; overflow: hidden;
+  }
+  .panel > .head {
+    display: flex; align-items: baseline; gap: .8rem;
+    padding: 1rem 1.4rem .95rem; border-bottom: 1px solid var(--line-soft);
+  }
+  .panel .step-no {
+    font-family: ui-monospace, Menlo, monospace; font-size: .68rem; color: var(--amber);
+    letter-spacing: .2em;
+  }
+  .panel .head h2 {
+    margin: 0; font-family: Charter, Georgia, serif; font-size: 1.15rem; font-weight: 600;
+  }
+  .panel .head .hint { margin-left: auto; color: var(--faint); font-size: .8rem; }
+  .panel > .body { padding: 1.2rem 1.4rem 1.4rem; }
+
+  /* ---------- controls ---------- */
+  .controls { display: flex; flex-wrap: wrap; gap: .9rem 1.2rem; align-items: end; }
+  label.field { display: flex; flex-direction: column; gap: .35rem; font-size: .72rem;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--soft);
+    font-family: ui-monospace, Menlo, monospace; }
+  select, input[type=number], textarea {
+    background: var(--inset); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 3px; padding: .5rem .65rem; font: inherit;
+    font-family: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif; font-size: .95rem;
+  }
+  select { min-width: 10.5rem; }
+  input[type=number] { width: 7rem; }
+  textarea { width: 100%; resize: vertical; min-height: 3.4rem; line-height: 1.5; }
+  button {
+    background: var(--amber); color: #171110; border: 1px solid var(--amber);
+    border-radius: 3px; padding: .55rem 1.15rem; font: inherit; font-weight: 600;
+    font-size: .92rem; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--amber); }
+  button.quiet { background: transparent; color: var(--soft); border-color: var(--line); font-weight: 500; }
+  button:hover:not(:disabled) { filter: brightness(1.1); }
+  button:disabled { opacity: .45; cursor: wait; }
+  :is(button, select, input, textarea, a, .row):focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  /* ---------- status line ---------- */
+  .statusline { margin-top: .9rem; min-height: 1.5em; color: var(--soft); font-size: .9rem; }
+  .statusline.error { color: var(--err); }
+  .statusline .dots::after { content: ""; animation: dots 1.4s steps(4) infinite; }
+  @keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+  @media (prefers-reduced-motion: reduce) { .statusline .dots::after { content: "…"; animation: none; } }
+
+  /* ---------- speaker table ---------- */
+  .table-scroll { overflow-x: auto; margin-top: 1rem; border: 1px solid var(--line-soft); border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: .55rem .8rem; }
+  thead th {
+    font-family: ui-monospace, Menlo, monospace; font-size: .66rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--faint); font-weight: 600;
+    border-bottom: 1px solid var(--line); background: var(--inset);
+    position: sticky; top: 0;
+  }
+  tbody tr { border-bottom: 1px solid var(--line-soft); }
+  tbody tr:last-child { border-bottom: none; }
+  tr.row { cursor: pointer; }
+  tr.row:hover { background: rgba(245,165,36,.05); }
+  tr.row.selected { background: rgba(245,165,36,.09); box-shadow: inset 3px 0 0 var(--amber); }
+  td.num { text-align: right; color: var(--soft); }
+  .play-btn {
+    width: 2rem; height: 2rem; padding: 0; border-radius: 50%;
+    background: transparent; color: var(--amber); border: 1px solid var(--amber-dim);
+    font-size: .7rem; line-height: 1;
+  }
+  tr.row.selected .play-btn { background: var(--amber); color: #171110; }
+  .chip {
+    display: inline-block; padding: .1rem .55rem; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--soft); font-size: .74rem;
+  }
+  .chip.lang { border-color: rgba(111,179,162,.4); color: var(--teal); }
+  /* quality meter: single-hue fill + number in ink — magnitude, not status */
+  .meter { display: inline-flex; align-items: center; gap: .55rem; }
+  .meter .track { width: 64px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .meter .fill { height: 100%; border-radius: 3px; background: var(--amber); }
+  .meter b { font-weight: 600; color: var(--ink); font-size: .88rem; min-width: 2ch; }
+  .empty { color: var(--faint); font-style: italic; margin: 1rem 0 0; }
+
+  /* ---------- selected voice bar ---------- */
+  .voicebar {
+    display: none; align-items: center; gap: 1rem; flex-wrap: wrap;
+    margin-top: 1rem; padding: .8rem 1rem;
+    background: var(--inset); border: 1px solid var(--line); border-radius: 3px;
+  }
+  .voicebar.active { display: flex; }
+  .voicebar .who { font-weight: 600; }
+  .voicebar .who small { display: block; font-weight: 400; color: var(--soft); font-size: .8rem; }
+  .voicebar audio { flex: 1; min-width: 220px; height: 36px; }
+
+  /* ---------- speak panel ---------- */
+  .examples { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0 0; }
+  .examples button { font-size: .8rem; padding: .3rem .7rem; }
+  .speak-row { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; margin-top: 1rem; }
+  .gen-note { color: var(--faint); font-size: .8rem; margin: .7rem 0 0; max-width: 60ch; }
+  .result { display: none; align-items: center; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+  .result.active { display: flex; }
+  .result audio { flex: 1; min-width: 220px; }
+  a.download { color: var(--amber); font-size: .85rem; }
+
+  #exportOut { margin-top: 1rem; font-size: .9rem; color: var(--teal); white-space: pre-line; }
+
+  footer { margin-top: 2.5rem; color: var(--faint); font-size: .78rem; max-width: 70ch; }
+  footer a { color: var(--soft); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="/">
+    <span class="devanagari">वाणी</span>
+    <span class="name">VaaniBox <small>Studio</small></span>
+  </a>
+  <div class="spacer"></div>
+  {% if hf_ok %}
+    <span class="signal"><span class="led"></span>Vaani link up</span>
+  {% else %}
+    <span class="signal off"><span class="led"></span>No HF token — demo only</span>
+  {% endif %}
+  <a class="about" href="/">about</a>
+</div>
+
+<div class="wrap">
+
+  <div class="panel">
+    <div class="head">
+      <span class="step-no">STEP 1</span>
+      <h2>Find a voice</h2>
+      <span class="hint">165 districts · 106 languages · real speakers</span>
+    </div>
+    <div class="body">
+      <div class="controls">
+        <label class="field">State
+          <select id="state">
+            {% for s in states %}<option {% if s == "Bihar" %}selected{% endif %}>{{ s }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field">District
+          <select id="district">
+            {% for d in districts %}<option>{{ d }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field">Clips to scan
+          <input type="number" id="limit" value="40" min="10" max="200" step="10">
+        </label>
+        <label class="field">Min quality
+          <input type="number" id="minScore" value="40" min="0" max="90" step="5">
+        </label>
+        <button id="curateBtn">Stream &amp; curate</button>
+        <button id="demoBtn" class="quiet">Demo mode</button>
+      </div>
+      <div class="statusline" id="status"></div>
+
+      <div class="table-scroll" id="tableWrap" hidden>
+        <table id="speakerTable">
+          <thead>
+            <tr>
+              <th style="width:3rem"></th><th>Speaker</th><th>Language</th><th>Gender</th>
+              <th>Quality</th><th class="num" style="text-align:right">Clips</th>
+              <th class="num" style="text-align:right">Best clip</th>
+              <th class="num" style="text-align:right">SNR</th>
+              <th style="width:3.4rem">Export</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty" id="emptyMsg">Nothing curated yet — pick a district and press <strong>Stream &amp; curate</strong>, or try Demo mode.</p>
+
+      <div class="voicebar" id="voicebar">
+        <div class="who">
+          <span id="vbName">—</span>
+          <small id="vbMeta"></small>
+        </div>
+        <audio id="player" controls></audio>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="head">
+      <span class="step-no">STEP 2</span>
+      <h2>Speak in this voice</h2>
+      <span class="hint" id="cloneVoiceName">no voice selected</span>
+    </div>
+    <div class="body">
+      <label class="field" style="width:100%">Text to speak
+        <textarea id="cloneText">नमस्ते, यह मेरी आवाज़ की एक झलक है।</textarea>
+      </label>
+      <div class="examples" aria-label="example texts">
+        <button class="quiet ex" data-lang="hi">नमस्ते, आप कैसे हैं?</button>
+        <button class="quiet ex" data-lang="hi">मला काही माहीत नाही आहे. (Marathi)</button>
+        <button class="quiet ex" data-lang="en">Hello! This voice was recorded in a village in India.</button>
+      </div>
+      <div class="speak-row">
+        <label class="field">Language
+          <select id="cloneLang">
+            <option value="hi" selected>Hindi / Devanagari</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <button id="cloneBtn">Generate speech</button>
+      </div>
+      <p class="gen-note">The engine speaks Hindi and English. For Marathi or any Devanagari-script text,
+        keep Hindi selected — the speaker's own voice and accent come from their recording.
+        Generation runs locally on your GPU (~15–30s).</p>
+      <div class="statusline" id="cloneStatus"></div>
+      <div class="result" id="cloneResult">
+        <audio id="clonePlayer" controls></audio>
+        <a class="download" id="cloneDownload" download="vaanibox_clone.wav">download wav</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="head">
+      <span class="step-no">STEP 3</span>
+      <h2>Export voice packs</h2>
+      <span class="hint">optional — for Voicebox desktop or other tools</span>
+    </div>
+    <div class="body">
+      <p style="color:var(--soft); margin:0 0 .9rem">Tick voices in the table above, then:</p>
+      <button id="exportBtn" class="ghost">Export selected voice packs</button>
+      <div id="exportOut"></div>
+    </div>
+  </div>
+
+  <footer>
+    Voice data: <a href="https://huggingface.co/datasets/ARTPARK-IISc/Vaani">Vaani</a> (ARTPARK, IISc Bangalore) CC-BY-4.0 ·
+    Cloning: Chatterbox Multilingual, running locally ·
+    These are real people's voices — use them for narration, research, and preservation, never impersonation.
+  </footer>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let selectedVoice = null;
+  let genTimer = null;
+
+  const status = (el, msg, isErr = false, busy = false) => {
+    el.innerHTML = busy ? msg + '<span class="dots"></span>' : msg;
+    el.className = "statusline" + (isErr ? " error" : "");
+  };
+
+  $("state").addEventListener("change", async () => {
+    const districts = await (await fetch(`/api/districts/${$("state").value}`)).json();
+    $("district").innerHTML = districts.map((d) => `<option>${d}</option>`).join("");
+  });
+
+  function selectRow(tr, s, { play = false } = {}) {
+    document.querySelectorAll("tr.row").forEach((r) => r.classList.remove("selected"));
+    tr.classList.add("selected");
+    selectedVoice = s;
+    const label = `${s.speaker} · ${s.language}${s.gender ? " · " + s.gender : ""}`;
+    $("cloneVoiceName").textContent = label;
+    $("vbName").textContent = s.speaker;
+    $("vbMeta").textContent = `${s.language}${s.gender ? " · " + s.gender : ""} · quality ${s.score}/100 · best clip ${s.duration}s`;
+    $("voicebar").classList.add("active");
+    $("player").src = `/api/audio/${s.id}`;
+    if (play) $("player").play();
+  }
+
+  function renderTable(speakers) {
+    const tbody = $("speakerTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    speakers.forEach((s, idx) => {
+      const tr = document.createElement("tr");
+      tr.className = "row";
+      tr.tabIndex = 0;
+      tr.innerHTML = `
+        <td><button class="play-btn" aria-label="play ${s.speaker}">▶</button></td>
+        <td>${s.speaker}</td>
+        <td><span class="chip lang">${s.language}</span></td>
+        <td>${s.gender || "—"}</td>
+        <td><span class="meter"><span class="track"><span class="fill" style="width:${s.score}%"></span></span><b>${s.score}</b></span></td>
+        <td class="num">${s.clips}</td>
+        <td class="num">${s.duration}s</td>
+        <td class="num">${s.snr} dB</td>
+        <td style="text-align:center"><input type="checkbox" class="pick" data-id="${s.id}" aria-label="export ${s.speaker}"></td>`;
+      const activate = (e) => {
+        if (e.target.classList.contains("pick")) return;
+        selectRow(tr, s, { play: true });
+      };
+      tr.addEventListener("click", activate);
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(e); } });
+      tbody.appendChild(tr);
+      if (idx === 0) selectRow(tr, s); // preselect the best voice, don't autoplay
+    });
+    $("tableWrap").hidden = speakers.length === 0;
+    $("emptyMsg").hidden = speakers.length > 0;
+  }
+
+  async function curate(url, body, btn, busyMsg) {
+    btn.disabled = true;
+    status($("status"), busyMsg, false, true);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { status($("status"), data.error, true); return; }
+      renderTable(data.speakers);
+      status($("status"), data.status + " Click ▶ to listen; the top voice is preselected.");
+    } catch (e) {
+      status($("status"), `Request failed: ${e}`, true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $("curateBtn").addEventListener("click", () =>
+    curate("/api/curate", {
+      state: $("state").value,
+      district: $("district").value,
+      limit: +$("limit").value,
+      min_score: +$("minScore").value,
+    }, $("curateBtn"), `Tuning in to ${$("district").value}, streaming clips`));
+
+  $("demoBtn").addEventListener("click", () =>
+    curate("/api/curate-demo", { min_score: +$("minScore").value }, $("demoBtn"),
+      "Generating synthetic demo voices"));
+
+  document.querySelectorAll(".ex").forEach((b) =>
+    b.addEventListener("click", () => {
+      $("cloneText").value = b.textContent.replace(" (Marathi)", "");
+      $("cloneLang").value = b.dataset.lang;
+    }));
+
+  $("cloneBtn").addEventListener("click", async () => {
+    if (!selectedVoice) {
+      status($("cloneStatus"), "Pick a voice first — curate in step 1, then click a row.", true);
+      return;
+    }
+    $("cloneBtn").disabled = true;
+    $("cloneResult").classList.remove("active");
+    const t0 = Date.now();
+    clearInterval(genTimer);
+    genTimer = setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000);
+      status($("cloneStatus"), `Generating in ${selectedVoice.speaker}'s voice — ${s}s`, false, true);
+    }, 1000);
+    status($("cloneStatus"), `Generating in ${selectedVoice.speaker}'s voice`, false, true);
+    try {
+      const res = await fetch("/api/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedVoice.id, text: $("cloneText").value, lang: $("cloneLang").value }),
+      });
+      clearInterval(genTimer);
+      if (!res.ok) {
+        const isJson = (res.headers.get("content-type") || "").includes("json");
+        status($("cloneStatus"), isJson ? (await res.json()).error : `Server error (HTTP ${res.status}) — check the terminal running app.py.`, true);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      $("clonePlayer").src = url;
+      $("cloneDownload").href = url;
+      $("cloneResult").classList.add("active");
+      $("clonePlayer").play();
+      status($("cloneStatus"), `Done in ${Math.round((Date.now() - t0) / 1000)}s — spoken in ${selectedVoice.speaker}'s voice, generated locally.`);
+    } catch (e) {
+      clearInterval(genTimer);
+      status($("cloneStatus"), `Generation failed: ${e}`, true);
+    } finally {
+      $("cloneBtn").disabled = false;
+    }
+  });
+
+  $("exportBtn").addEventListener("click", async () => {
+    const ids = [...document.querySelectorAll(".pick:checked")].map((c) => c.dataset.id);
+    const res = await fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const data = await res.json();
+    $("exportOut").textContent = res.ok
+      ? `${data.status}\n${data.packs.map((p) => "• " + p).join("\n")}`
+      : data.error;
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<title>VaaniBox — Every district of India, as a voice</title>
+<style>
+  :root {
+    --bg: #FAF7F3;
+    --bg-raise: #FFFFFF;
+    --ink: #241D18;
+    --ink-soft: #5D544C;
+    --line: #E4DCD2;
+    --amber: #C77A0A;
+    --amber-glow: #F5A524;
+    --teal: #2F6A5E;
+    --dial-bg: #171110;
+    --dial-ink: #F2E8D8;
+    --code-bg: #1E1712;
+    --code-ink: #EFE3CF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171110;
+      --bg-raise: #211915;
+      --ink: #F2E8D8;
+      --ink-soft: #B3A492;
+      --line: #35291F;
+      --amber: #F5A524;
+      --amber-glow: #F5A524;
+      --teal: #6FB3A2;
+      --dial-bg: #100B0A;
+      --dial-ink: #F2E8D8;
+      --code-bg: #100B0A;
+      --code-ink: #EFE3CF;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #FAF7F3; --bg-raise: #FFFFFF; --ink: #241D18; --ink-soft: #5D544C;
+    --line: #E4DCD2; --amber: #C77A0A; --amber-glow: #F5A524; --teal: #2F6A5E;
+    --dial-bg: #171110; --dial-ink: #F2E8D8; --code-bg: #1E1712; --code-ink: #EFE3CF;
+  }
+  :root[data-theme="dark"] {
+    --bg: #171110; --bg-raise: #211915; --ink: #F2E8D8; --ink-soft: #B3A492;
+    --line: #35291F; --amber: #F5A524; --amber-glow: #F5A524; --teal: #6FB3A2;
+    --dial-bg: #100B0A; --dial-ink: #F2E8D8; --code-bg: #100B0A; --code-ink: #EFE3CF;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6; font-size: 17px;
+  }
+  .serif { font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ---------- hero (committed dark, both themes) ---------- */
+  .hero {
+    background: var(--dial-bg); color: var(--dial-ink);
+    position: relative; overflow: hidden;
+  }
+  .hero .wrap { position: relative; z-index: 2; padding-top: 5rem; padding-bottom: 0; }
+  #wave { position: absolute; inset: auto 0 0 0; width: 100%; height: 240px; display: block; z-index: 1; opacity: .9; }
+  .eyebrow {
+    font-family: ui-monospace, Menlo, monospace; font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--amber-glow); margin: 0 0 1.2rem;
+  }
+  .script-cycle {
+    font-size: clamp(4rem, 11vw, 8rem); line-height: 1.1; margin: 0;
+    color: var(--amber-glow); font-weight: 600;
+    text-shadow: 0 0 60px rgba(245, 165, 36, .35);
+    min-height: 1.15em;
+  }
+  .hero h1 {
+    font-size: clamp(1.6rem, 3.6vw, 2.6rem); font-weight: 600; margin: .6rem 0 1rem;
+    max-width: 24ch; text-wrap: balance; line-height: 1.25;
+  }
+  .hero p.lede { max-width: 54ch; color: #CBBBA4; margin: 0 0 2.2rem; font-size: 1.05rem; }
+  .hero p.lede a { color: var(--amber-glow); text-decoration-color: rgba(245,165,36,.4); }
+  .hero .cta-row { display: flex; gap: .9rem; flex-wrap: wrap; padding-bottom: 12rem; }
+  .btn {
+    display: inline-block; padding: .7rem 1.3rem; border-radius: 2px;
+    font-weight: 600; font-size: .92rem; text-decoration: none;
+    border: 1px solid var(--amber-glow);
+  }
+  .btn.solid { background: var(--amber-glow); color: #171110; }
+  .btn.ghost { color: var(--amber-glow); }
+  .btn:focus-visible, a:focus-visible { outline: 2px solid var(--amber-glow); outline-offset: 3px; }
+
+  /* ---------- tuner ticker ---------- */
+  .tuner {
+    background: var(--dial-bg); border-top: 1px solid #2E2119; border-bottom: 3px solid var(--amber-glow);
+    overflow: hidden; position: relative; padding: .55rem 0;
+  }
+  .tuner::before {
+    content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+    background: var(--amber-glow); z-index: 2; box-shadow: 0 0 12px 2px rgba(245,165,36,.6);
+  }
+  .tuner-track { display: flex; width: max-content; animation: tune 80s linear infinite; }
+  @keyframes tune { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .tuner span {
+    font-family: ui-monospace, Menlo, monospace; font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; color: #8D7C66; padding: 0 1.4rem; white-space: nowrap;
+  }
+  .tuner span::after { content: "·"; margin-left: 2.8rem; color: #4A392B; }
+  @media (prefers-reduced-motion: reduce) {
+    .tuner-track { animation: none; }
+    .script-cycle { text-shadow: none; }
+  }
+
+  /* ---------- stat band ---------- */
+  .stats { border-bottom: 1px solid var(--line); }
+  .stats .wrap {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1px; background: var(--line); padding: 0; max-width: 68rem;
+  }
+  .stat { background: var(--bg); padding: 2rem 1.5rem; }
+  .stat b {
+    display: block; font-size: 2.2rem; font-weight: 700; line-height: 1.1;
+    font-variant-numeric: tabular-nums; color: var(--amber);
+    font-family: Charter, Georgia, serif;
+  }
+  .stat small { color: var(--ink-soft); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
+
+  /* ---------- sections ---------- */
+  section { padding: 4.5rem 0; }
+  section + section { border-top: 1px solid var(--line); }
+  .kicker {
+    font-family: ui-monospace, Menlo, monospace; font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--teal); margin: 0 0 .8rem;
+  }
+  h2 {
+    font-family: Charter, "Iowan Old Style", Georgia, serif; font-size: clamp(1.7rem, 3vw, 2.3rem);
+    font-weight: 600; margin: 0 0 1rem; text-wrap: balance; line-height: 1.2;
+  }
+  p { max-width: 62ch; }
+  .muted { color: var(--ink-soft); }
+  a { color: var(--amber); }
+
+  .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 2.5rem; align-items: start; }
+
+  /* pipeline — a real sequence, so numbered */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1.5rem; margin-top: 2.2rem; }
+  .step { background: var(--bg-raise); border: 1px solid var(--line); padding: 1.5rem; border-radius: 2px; }
+  .step .n {
+    font-family: ui-monospace, Menlo, monospace; color: var(--amber); font-size: .8rem;
+    letter-spacing: .18em; display: block; margin-bottom: .7rem;
+  }
+  .step h3 { margin: 0 0 .5rem; font-size: 1.05rem; }
+  .step p { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* roadmap */
+  .roadmap { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+  .idea { border-top: 3px solid var(--teal); padding-top: 1rem; }
+  .idea h3 { margin: 0 0 .4rem; font-size: 1.05rem; }
+  .idea p { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* code */
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 1.4rem 1.6rem;
+    border-radius: 2px; overflow-x: auto; font-size: .88rem; line-height: 1.7;
+    border-left: 3px solid var(--amber-glow); margin: 1.6rem 0 0;
+  }
+  pre .c { color: #8D7C66; }
+
+  footer { border-top: 1px solid var(--line); padding: 2.5rem 0 3.5rem; }
+  footer p { font-size: .88rem; color: var(--ink-soft); max-width: 70ch; }
+</style>
+
+<div class="hero">
+  <div class="wrap">
+    <p class="eyebrow">VaaniBox · an open-source experiment</p>
+    <div class="script-cycle serif" id="scriptCycle" aria-label="Vaani, written in Indian scripts">वाणी</div>
+    <h1 class="serif">Every district of India, as a voice you can use.</h1>
+    <p class="lede">
+      <a href="https://huggingface.co/datasets/ARTPARK-IISc/Vaani">Vaani</a> — IISc&rsquo;s
+      31,000-hour speech corpus from 156,000 speakers — meets
+      <a href="https://github.com/jamiepine/voicebox">Voicebox</a>, the local-first
+      open-source voice studio. Stream a district, curate its cleanest voices,
+      and clone them into speech. All on your machine.
+    </p>
+    <div class="cta-row">
+      <a class="btn solid" href="https://github.com/jamiepine/voicebox">Get Voicebox</a>
+      <a class="btn ghost" href="https://huggingface.co/datasets/ARTPARK-IISc/Vaani">Browse the Vaani dataset</a>
+    </div>
+  </div>
+  <canvas id="wave" aria-hidden="true"></canvas>
+</div>
+
+<div class="tuner" aria-hidden="true">
+  <div class="tuner-track" id="tunerTrack">
+    <span>Araria · Bihar</span><span>Chamarajanagar · Karnataka</span><span>Srinagar · J&amp;K</span>
+    <span>Kanyakumari · Tamil Nadu</span><span>Aizawl · Mizoram</span><span>Jaisalmer · Rajasthan</span>
+    <span>Kolkata · West Bengal</span><span>Wayanad · Kerala</span><span>Gorakhpur · Uttar Pradesh</span>
+    <span>Bastar · Chhattisgarh</span><span>Imphal West · Manipur</span><span>Pune · Maharashtra</span>
+    <span>Kohima · Nagaland</span><span>Varanasi · Uttar Pradesh</span><span>Gangtok · Sikkim</span>
+    <span>Hyderabad · Telangana</span><span>Dwarka · Gujarat</span><span>Shimla · Himachal</span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><b>165</b><small>districts</small></div>
+    <div class="stat"><b>106</b><small>languages</small></div>
+    <div class="stat"><b>156K</b><small>speakers</small></div>
+    <div class="stat"><b>31,255</b><small>hours of speech</small></div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap two-col">
+    <div>
+      <p class="kicker">The gap</p>
+      <h2>TTS speaks &ldquo;Indian English.&rdquo; India speaks in districts.</h2>
+    </div>
+    <div>
+      <p>Commercial voice AI offers one or two Indian voices — a generic Hindi,
+      an accentless English. But Bhojpuri from Ara doesn&rsquo;t sound like Magahi from
+      Gaya, and Kannada in Bidar doesn&rsquo;t sound like Kannada in Mysore.
+      Vaani recorded that reality: spontaneous, image-prompted speech from real
+      people in 165 districts, released CC-BY-4.0.</p>
+      <p>Meanwhile Voicebox put zero-shot voice cloning — Chatterbox, Qwen3-TTS,
+      seven engines — on the desktop, MIT-licensed, no cloud required. All it needs
+      is a good reference clip. <strong class="serif">Vaani has 31,000 hours of them.</strong></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">How it works</p>
+    <h2>From field recording to studio voice in four steps.</h2>
+    <div class="steps">
+      <div class="step"><span class="n">STEP 1</span><h3>Stream</h3>
+        <p>Pick any of 165 State–District configs. Audio streams from Hugging Face — nothing near the 3.6&nbsp;TB corpus touches your disk.</p></div>
+      <div class="step"><span class="n">STEP 2</span><h3>Curate</h3>
+        <p>Every clip is scored for cloning quality — duration, loudness, SNR, speech ratio, clipping — and grouped by speaker. Field noise gets rejected; keepers get ranked.</p></div>
+      <div class="step"><span class="n">STEP 3</span><h3>Export</h3>
+        <p>Selected speakers become voice packs: reference WAVs, metadata, and CC-BY attribution, ready for Voicebox&rsquo;s Add&nbsp;Voice flow.</p></div>
+      <div class="step"><span class="n">STEP 4</span><h3>Clone</h3>
+        <p>Voicebox (or the built-in Chatterbox preview) speaks any text in that voice — Hindi, Tamil, Bengali, or accented English. Locally.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Where this goes</p>
+    <h2>Four directions worth building next.</h2>
+    <div class="roadmap">
+      <div class="idea"><h3>Accent Atlas</h3>
+        <p>A clickable map of India where every district speaks. Tourism, education, and film localization with real regional texture.</p></div>
+      <div class="idea"><h3>An Indian engine for Voicebox</h3>
+        <p>Fine-tune Chatterbox or Qwen3-TTS on Vaani&rsquo;s 2,043 transcribed hours and contribute the engine upstream.</p></div>
+      <div class="idea"><h3>Dialect-aware dictation</h3>
+        <p>Voicebox dictates through Whisper, which stumbles on Indian accents and code-switching. Vaani is exactly the fine-tuning data it needs.</p></div>
+      <div class="idea"><h3>A first voice for 100+ languages</h3>
+        <p>Mundari, Kurukh, Bhili and dozens more have no TTS anywhere. A curated pack gives each one a synthetic voice for the first time.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two-col">
+    <div>
+      <p class="kicker">Try the prototype</p>
+      <h2>A working studio, today.</h2>
+      <p class="muted">The VaaniBox prototype ships a Gradio app with explore/curate,
+      one-click voice-pack export, and an optional cloning preview. No Hugging Face
+      account? Demo mode runs the full pipeline on synthetic voices.</p>
+    </div>
+    <div>
+<pre class="mono"><span class="c"># in the vaanibox project folder</span>
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python app.py
+<span class="c"># → http://127.0.0.1:5051  (landing + studio)</span></pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Open by construction.</strong> Vaani is CC-BY-4.0 (ARTPARK, IISc Bangalore);
+    every exported pack carries attribution. Voicebox and VaaniBox are MIT.</p>
+    <p><strong>These are real people&rsquo;s voices.</strong> Use packs for accent-authentic
+    narration, research, accessibility, and language preservation — never impersonation.
+    VaaniBox exists to give India&rsquo;s spoken diversity a place in synthetic speech,
+    not to counterfeit any individual.</p>
+  </div>
+</footer>
+
+<script>
+  // वाणी across scripts — Vaani means "voice/speech"
+  const scripts = ["वाणी", "வாணி", "వాణి", "ವಾಣಿ", "বাণী", "વાણી", "ਵਾਣੀ", "ବାଣୀ", "വാണി"];
+  const el = document.getElementById("scriptCycle");
+  let i = 0;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduced) setInterval(() => { i = (i + 1) % scripts.length; el.textContent = scripts[i]; }, 2200);
+
+  // duplicate tuner content for a seamless loop
+  const track = document.getElementById("tunerTrack");
+  track.innerHTML += track.innerHTML;
+
+  // ambient waveform
+  const cv = document.getElementById("wave"), ctx = cv.getContext("2d");
+  function size() { cv.width = cv.offsetWidth * devicePixelRatio; cv.height = cv.offsetHeight * devicePixelRatio; }
+  size(); addEventListener("resize", size);
+  let t = 0;
+  function draw() {
+    const w = cv.width, h = cv.height, mid = h * 0.62;
+    ctx.clearRect(0, 0, w, h);
+    for (let layer = 0; layer < 3; layer++) {
+      ctx.beginPath();
+      const amp = h * (0.10 + layer * 0.07), speed = 0.9 + layer * 0.5;
+      for (let x = 0; x <= w; x += 3) {
+        const u = x / w;
+        const env = Math.sin(u * Math.PI); // fade at edges
+        const y = mid
+          + Math.sin(u * 22 + t * speed) * amp * env * 0.5
+          + Math.sin(u * 53 - t * speed * 1.7) * amp * env * 0.3
+          + Math.sin(u * 7 + t * 0.4) * amp * env * 0.4;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = layer === 0 ? "rgba(245,165,36,.55)" : layer === 1 ? "rgba(245,165,36,.22)" : "rgba(111,179,162,.18)";
+      ctx.lineWidth = (layer === 0 ? 2 : 1.2) * devicePixelRatio;
+      ctx.stroke();
+    }
+    t += 0.012;
+    if (!reduced) requestAnimationFrame(draw);
+  }
+  draw();
+</script>

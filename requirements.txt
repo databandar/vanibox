@@ -1,0 +1,7 @@
+flask>=3
+gradio>=5  # only for the legacy gradio_app.py
+datasets>=3
+soundfile
+numpy
+huggingface_hub
+chatterbox-tts  # in-browser voice cloning (~3 GB model downloaded on first generate)

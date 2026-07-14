@@ -1,0 +1,7 @@
+.hf_token
+.venv/
+voice_packs/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
