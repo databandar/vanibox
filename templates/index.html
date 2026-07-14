@@ -93,6 +93,31 @@
   button:disabled { opacity: .45; cursor: wait; }
   :is(button, select, input, textarea, a, .row):focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
+  /* ---------- accent atlas (tile cartogram of India) ---------- */
+  .atlas-layout { display: flex; gap: 1.6rem; align-items: flex-start; flex-wrap: wrap; }
+  .atlas {
+    display: grid; grid-template-columns: repeat(8, 2.6rem); grid-auto-rows: 2.6rem;
+    gap: 4px; padding: 1rem; background: var(--inset);
+    border: 1px solid var(--line); border-radius: 4px; flex-shrink: 0;
+  }
+  .atlas-side { flex: 1; min-width: 20rem; }
+  .tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 3px; background: var(--panel);
+    color: var(--soft); cursor: pointer; padding: 0; line-height: 1.15;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .tile b { font-size: .72rem; font-weight: 700; letter-spacing: .04em; }
+  .tile small { font-size: .58rem; color: var(--faint); }
+  .tile:hover { border-color: var(--amber-dim); color: var(--ink); }
+  .tile.active { background: var(--amber); border-color: var(--amber); color: #171110; }
+  .tile.active small { color: rgba(23,17,16,.7); }
+  .tile.lit:not(.active) {
+    border-color: var(--amber-dim); color: var(--amber);
+    box-shadow: inset 0 0 10px rgba(245,165,36,.12);
+  }
+  @media (max-width: 720px) { .atlas { grid-template-columns: repeat(8, 2.1rem); grid-auto-rows: 2.1rem; } }
+
   /* ---------- status line ---------- */
   .statusline { margin-top: .9rem; min-height: 1.5em; color: var(--soft); font-size: .9rem; }
   .statusline.error { color: var(--err); }
@@ -186,6 +211,9 @@
       <span class="hint">165 districts · 106 languages · real speakers</span>
     </div>
     <div class="body">
+      <div class="atlas-layout">
+      <div class="atlas" id="atlas" role="listbox" aria-label="Pick a state on the map"></div>
+      <div class="atlas-side">
       <div class="controls">
         <label class="field">State
           <select id="state">
@@ -208,6 +236,8 @@
         <button id="demoBtn" class="quiet">Demo mode</button>
       </div>
       <div class="statusline" id="status"></div>
+      </div><!-- /atlas-side -->
+      </div><!-- /atlas-layout -->
 
       <div class="table-scroll" id="tableWrap" hidden>
         <table id="speakerTable">
@@ -292,6 +322,50 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
+  const DISTRICT_COUNTS = {{ district_counts | tojson }};
+  let curatedStates = new Set({{ curated_states | tojson }});
+
+  // Tile cartogram: rough geographic positions, one tile per state in Vaani.
+  const TILES = {
+    JammuAndKashmir:  ["JK", 3, 1], HimachalPradesh: ["HP", 3, 2], Punjab: ["PB", 2, 2],
+    Chandigarh: ["CH", 2, 3], Haryana: ["HR", 3, 3], Uttarakhand: ["UK", 4, 3],
+    Rajasthan: ["RJ", 1, 4], Delhi: ["DL", 3, 4], UttarPradesh: ["UP", 4, 4],
+    Bihar: ["BR", 5, 4], Sikkim: ["SK", 6, 4], ArunachalPradesh: ["AR", 8, 3],
+    Assam: ["AS", 7, 4], Nagaland: ["NL", 8, 4],
+    Gujarat: ["GJ", 1, 5], MadhyaPradesh: ["MP", 3, 5], Chhattisgarh: ["CG", 4, 5],
+    Jharkhand: ["JH", 5, 5], WestBengal: ["WB", 6, 5], Meghalaya: ["ML", 7, 5], Manipur: ["MN", 8, 5],
+    Maharashtra: ["MH", 2, 6], Odisha: ["OD", 5, 6], Tripura: ["TR", 7, 6], Mizoram: ["MZ", 8, 6],
+    Goa: ["GA", 1, 7], Telangana: ["TS", 3, 7], AndhraPradesh: ["AP", 4, 7],
+    Karnataka: ["KA", 2, 8], TamilNadu: ["TN", 3, 9], Kerala: ["KL", 2, 9],
+  };
+
+  function buildAtlas() {
+    const atlas = $("atlas");
+    for (const [state, [abbr, col, row]] of Object.entries(TILES)) {
+      if (!(state in DISTRICT_COUNTS)) continue;
+      const t = document.createElement("button");
+      t.className = "tile";
+      t.dataset.state = state;
+      t.title = `${state} — ${DISTRICT_COUNTS[state]} district(s)`;
+      t.setAttribute("role", "option");
+      t.style.gridColumn = col;
+      t.style.gridRow = row;
+      t.innerHTML = `<b>${abbr}</b><small>${DISTRICT_COUNTS[state]}</small>`;
+      t.addEventListener("click", () => {
+        $("state").value = state;
+        $("state").dispatchEvent(new Event("change"));
+      });
+      atlas.appendChild(t);
+    }
+    paintAtlas();
+  }
+
+  function paintAtlas() {
+    document.querySelectorAll(".tile").forEach((t) => {
+      t.classList.toggle("active", t.dataset.state === $("state").value);
+      t.classList.toggle("lit", curatedStates.has(t.dataset.state));
+    });
+  }
   let selectedVoice = null;
   let genTimer = null;
 
@@ -301,9 +375,11 @@
   };
 
   $("state").addEventListener("change", async () => {
+    paintAtlas();
     const districts = await (await fetch(`/api/districts/${$("state").value}`)).json();
     $("district").innerHTML = districts.map((d) => `<option>${d}</option>`).join("");
   });
+  buildAtlas();
 
   function selectRow(tr, s, { play = false } = {}) {
     document.querySelectorAll("tr.row").forEach((r) => r.classList.remove("selected"));
@@ -360,6 +436,8 @@
       const data = await res.json();
       if (!res.ok) { status($("status"), data.error, true); return; }
       renderTable(data.speakers);
+      data.speakers.forEach((s) => { if (s.state) curatedStates.add(s.state); });
+      paintAtlas();
       status($("status"), data.status + " Click ▶ to listen; the top voice is preselected.");
     } catch (e) {
       status($("status"), `Request failed: ${e}`, true);

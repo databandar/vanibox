@@ -43,6 +43,7 @@ def _profiles_json(profiles) -> list[dict]:
                 "speaker": p.speaker_id,
                 "language": p.language,
                 "gender": p.gender,
+                "state": p.state,
                 "district": p.district,
                 "clips": len(p.clips),
                 "score": round(p.best_score),
@@ -71,6 +72,8 @@ def studio():
         "index.html",
         states=STATES,
         districts=districts_for("Bihar"),
+        district_counts={s: len(districts_for(s)) for s in STATES},
+        curated_states=sorted({p.state for p in _profiles.values() if p.state}),
         hf_ok=has_hf_token(),
     )
 
