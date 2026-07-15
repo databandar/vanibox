@@ -1,16 +1,7 @@
-.hf_token
 .venv/
-voice_packs/
 __pycache__/
 *.pyc
 .DS_Store
-.pytest_cache/
-vaanibox.db
-static/india_states_raw.geojson
-static/india_districts_raw.geojson
-.telegram_token
-characters/*.wav
-datasets/
 radio/music/
 radio/rj/
 radio/podcast/

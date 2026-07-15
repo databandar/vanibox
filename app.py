@@ -1,9 +1,9 @@
-"""Radio Vaani — AI radio and podcast in Indian district voices.
+"""Radio Vaani — your music with an AI RJ, plus a fake podcast.
 
 Run:  .venv/bin/python app.py   ->  http://127.0.0.1:5051
 
-Content is pre-rendered by scripts/build_radio_demo.py (RJ + podcast in
-Vaani district composite voices, plus everything in radio/music/).
+Content is pre-rendered by scripts/build_radio_demo.py (Kokoro voices:
+RJ Meera + podcast hosts), music comes from radio/music/.
 """
 
 from pathlib import Path

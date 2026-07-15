@@ -128,17 +128,16 @@
     <div class="controls">
       <button class="power" id="power" aria-label="play / pause">▶</button>
       <button class="skip" id="skip">⏭ skip</button>
-      <span class="hintline" id="hint">late-night coding companion — an RJ with a real district voice, lo-fi in between</span>
+      <span class="hintline" id="hint">late-night coding companion — RJ Meera announces your songs between focus blocks</span>
     </div>
 
     <div class="eplist" id="eplist"></div>
   </div>
 
   <p class="blurb">
-    Everything here is generated on this machine: the RJ speaks in a <b>composite of real
-    Nagpur speakers</b> from the Vaani dataset (no single real person), the podcast hosts are
-    AI presets, and the lo-fi is procedural. Drop your own MP3s into <b>radio/music/</b> and
-    rebuild to make it your station.
+    Everything here runs on this machine: <b>RJ Meera</b> and the podcast hosts are local AI
+    voices, and the station plays whatever you put in <b>radio/music/</b> — she introduces
+    each song by name. Re-run <b>scripts/build_radio_demo.py</b> after changing the music.
   </p>
 </div>
 
@@ -227,7 +226,7 @@
       ? "VAANI FM · 165.0 · FOR PEOPLE WHO SHIP"
       : "STACK UNDERFLOW · A FAKE PODCAST BY REAL MACHINES";
     $("hint").textContent = chan === "radio"
-      ? "late-night coding companion — an RJ with a real district voice, lo-fi in between"
+      ? "late-night coding companion — RJ Meera announces your songs between focus blocks"
       : "two AI hosts, one laptop, zero cloud — pick an episode";
   }
   document.querySelectorAll(".chan").forEach((b) =>

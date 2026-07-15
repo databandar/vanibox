@@ -1,8 +1,4 @@
 flask>=3
 numpy
 soundfile
-librosa
-chatterbox-tts   # RJ voice (clones from district composites)
-kokoro           # podcast host voices (Dev & Meera presets)
-huggingface_hub  # streaming Vaani when curating new district voices
-pyarrow          # direct parquet reads from the Vaani dataset
+kokoro   # all voices: RJ Meera + podcast hosts
