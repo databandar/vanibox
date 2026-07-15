@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio Vaani</title>
+<style>
+  :root {
+    --bg: #14100E; --panel: #1D1613; --inset: #100C0A;
+    --ink: #F2E8D8; --soft: #A8977F; --faint: #6E604F;
+    --line: #322721; --amber: #F5A524; --amber-dim: #8A6520; --teal: #6FB3A2; --red: #E05C4B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink); min-height: 100vh;
+    font-family: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .topbar {
+    width: 100%; display: flex; align-items: center; gap: 1rem;
+    padding: .9rem 1.6rem; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  .brand { display: flex; align-items: baseline; gap: .6rem; text-decoration: none; }
+  .brand .dev {
+    font-family: Charter, Georgia, serif; font-size: 1.5rem; font-weight: 600;
+    color: var(--amber); text-shadow: 0 0 24px rgba(245,165,36,.35);
+  }
+  .brand .name { color: var(--ink); font-weight: 600; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--soft); font-size: .85rem; text-decoration: none; border-bottom: 1px dotted var(--faint); }
+  .topbar a:hover { color: var(--amber); }
+
+  .set { width: min(44rem, 94vw); margin: 2.2rem 0 4rem; }
+
+  /* the radio set */
+  .console {
+    background: linear-gradient(180deg, #221A15, #191310);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 1.6rem 1.8rem; box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  }
+  .console-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }
+  .onair {
+    font-family: ui-monospace, Menlo, monospace; font-size: .7rem; letter-spacing: .24em;
+    padding: .3rem .7rem; border-radius: 3px; border: 1px solid var(--line); color: var(--faint);
+  }
+  .onair.live { color: #FFF; background: var(--red); border-color: var(--red);
+    box-shadow: 0 0 18px rgba(224,92,75,.5); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 6px rgba(224,92,75,.25); } }
+  @media (prefers-reduced-motion: reduce) { .onair.live { animation: none; } }
+  .channels { margin-left: auto; display: flex; gap: .5rem; }
+  .chan {
+    font-family: ui-monospace, Menlo, monospace; font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; padding: .4rem .9rem; border-radius: 3px; cursor: pointer;
+    background: transparent; border: 1px solid var(--line); color: var(--soft);
+  }
+  .chan.active { background: var(--amber); border-color: var(--amber); color: #171110; font-weight: 700; }
+  .chan:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .glass {
+    background: var(--inset); border: 1px solid var(--line); border-radius: 6px;
+    padding: 1.1rem 1.3rem; margin-bottom: 1.1rem;
+  }
+  .freq {
+    font-family: ui-monospace, Menlo, monospace; font-size: .68rem; letter-spacing: .2em;
+    color: var(--teal); text-transform: uppercase; margin-bottom: .35rem;
+  }
+  .now {
+    font-family: Charter, Georgia, serif; font-size: 1.35rem; font-weight: 600;
+    color: var(--amber); text-shadow: 0 0 30px rgba(245,165,36,.25);
+    min-height: 1.4em; text-wrap: balance;
+  }
+  .next { color: var(--faint); font-size: .82rem; margin-top: .3rem; min-height: 1.2em; }
+  canvas#viz { display: block; width: 100%; height: 72px; margin-top: .8rem; }
+
+  .controls { display: flex; align-items: center; gap: 1rem; }
+  .power {
+    width: 4.4rem; height: 4.4rem; border-radius: 50%; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #2B211A, #191310);
+    border: 2px solid var(--amber-dim); color: var(--amber); font-size: 1.5rem;
+  }
+  .power.playing { border-color: var(--amber); box-shadow: 0 0 26px rgba(245,165,36,.35); }
+  .power:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+  .skip { background: transparent; border: 1px solid var(--line); color: var(--soft);
+    border-radius: 3px; padding: .5rem .9rem; cursor: pointer; font: inherit; font-size: .85rem; }
+  .skip:hover { color: var(--amber); border-color: var(--amber-dim); }
+  .hintline { color: var(--faint); font-size: .78rem; margin-left: auto; max-width: 15rem; text-align: right; }
+
+  .eplist { margin-top: 1rem; display: none; }
+  .eplist.show { display: block; }
+  .ep {
+    display: flex; align-items: center; gap: .9rem; padding: .7rem .9rem;
+    border: 1px solid var(--line); border-radius: 4px; cursor: pointer; background: var(--inset);
+  }
+  .ep:hover { border-color: var(--amber-dim); }
+  .ep .t { font-weight: 600; }
+  .ep small { color: var(--faint); display: block; }
+  .ep .dur { margin-left: auto; color: var(--soft); font-family: ui-monospace, Menlo, monospace; font-size: .8rem; }
+
+  .blurb { color: var(--faint); font-size: .82rem; margin-top: 1.4rem; text-align: center; max-width: 38rem; }
+  .blurb b { color: var(--soft); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="/"><span class="dev">वाणी</span><span class="name">Radio Vaani</span></a>
+  <div class="spacer"></div>
+  <a href="/studio">studio</a>
+  <a href="https://t.me/Bandar_voice_bot">✈️ bot</a>
+</div>
+
+<div class="set">
+  <div class="console">
+    <div class="console-top">
+      <span class="onair" id="onair">ON AIR</span>
+      <div class="channels">
+        <button class="chan active" data-chan="radio">📻 Radio</button>
+        <button class="chan" data-chan="podcast">🎙 Podcast</button>
+      </div>
+    </div>
+
+    <div class="glass">
+      <div class="freq" id="freq">VAANI FM · 165.0 · FOR PEOPLE WHO SHIP</div>
+      <div class="now" id="now">Press power to tune in</div>
+      <div class="next" id="next"></div>
+      <canvas id="viz" aria-hidden="true"></canvas>
+    </div>
+
+    <div class="controls">
+      <button class="power" id="power" aria-label="play / pause">▶</button>
+      <button class="skip" id="skip">⏭ skip</button>
+      <span class="hintline" id="hint">late-night coding companion — an RJ with a real district voice, lo-fi in between</span>
+    </div>
+
+    <div class="eplist" id="eplist"></div>
+  </div>
+
+  <p class="blurb">
+    Everything here is generated on this machine: the RJ speaks in a <b>composite of real
+    Nagpur speakers</b> from the Vaani dataset (no single real person), the podcast hosts are
+    AI presets, and the lo-fi is procedural. Drop your own MP3s into <b>radio/music/</b> and
+    rebuild to make it your station.
+  </p>
+</div>
+
+<audio id="deck" preload="auto"></audio>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const deck = $("deck");
+  let playlist = { radio: [], podcasts: [] };
+  let chan = "radio", idx = -1, playing = false;
+
+  fetch("/radio/playlist.json").then((r) => r.json()).then((p) => {
+    playlist = p;
+    renderEpisodes();
+  }).catch(() => { $("now").textContent = "No content yet — run scripts/build_radio_demo.py first."; });
+
+  function renderEpisodes() {
+    $("eplist").innerHTML = playlist.podcasts.map((ep, i) => `
+      <div class="ep" data-i="${i}" role="button" tabindex="0">
+        <span>🎙</span>
+        <span><span class="t">${ep.title}</span><small>${ep.hosts}</small></span>
+        <span class="dur">${Math.floor(ep.duration / 60)}:${String(ep.duration % 60).padStart(2, "0")}</span>
+      </div>`).join("");
+    document.querySelectorAll(".ep").forEach((el) => {
+      const pick = () => { playEpisode(+el.dataset.i); };
+      el.addEventListener("click", pick);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter") pick(); });
+    });
+  }
+
+  function setNow(label, next) {
+    $("now").textContent = label;
+    $("next").textContent = next ? `up next: ${next}` : "";
+  }
+
+  function playRadio(i) {
+    const items = playlist.radio;
+    if (!items.length) return;
+    idx = ((i % items.length) + items.length) % items.length;
+    const item = items[idx];
+    deck.src = `/radio/audio/${item.file}`;
+    deck.play();
+    const next = items[(idx + 1) % items.length];
+    setNow((item.type === "rj" ? "🎙 " : "♪ ") + item.label, next.label);
+  }
+
+  function playEpisode(i) {
+    chan = "podcast";
+    paintChan();
+    const ep = playlist.podcasts[i];
+    deck.src = `/radio/audio/${ep.file}`;
+    deck.play();
+    setNow("🎙 " + ep.title, "");
+  }
+
+  deck.addEventListener("play", () => {
+    playing = true;
+    $("power").textContent = "❚❚";
+    $("power").classList.add("playing");
+    $("onair").classList.add("live");
+    startViz();
+  });
+  deck.addEventListener("pause", () => {
+    playing = false;
+    $("power").textContent = "▶";
+    $("power").classList.remove("playing");
+    $("onair").classList.remove("live");
+  });
+  deck.addEventListener("ended", () => {
+    if (chan === "radio") playRadio(idx + 1);
+    else { $("now").textContent = "Episode over. More soon."; $("onair").classList.remove("live"); }
+  });
+
+  $("power").addEventListener("click", () => {
+    if (playing) { deck.pause(); return; }
+    if (deck.src && deck.currentTime > 0) { deck.play(); return; }
+    if (chan === "radio") playRadio(0);
+    else if (playlist.podcasts.length) playEpisode(0);
+  });
+  $("skip").addEventListener("click", () => { if (chan === "radio") playRadio(idx + 1); });
+
+  function paintChan() {
+    document.querySelectorAll(".chan").forEach((b) => b.classList.toggle("active", b.dataset.chan === chan));
+    $("eplist").classList.toggle("show", chan === "podcast");
+    $("freq").textContent = chan === "radio"
+      ? "VAANI FM · 165.0 · FOR PEOPLE WHO SHIP"
+      : "STACK UNDERFLOW · A FAKE PODCAST BY REAL MACHINES";
+    $("hint").textContent = chan === "radio"
+      ? "late-night coding companion — an RJ with a real district voice, lo-fi in between"
+      : "two AI hosts, one laptop, zero cloud — pick an episode";
+  }
+  document.querySelectorAll(".chan").forEach((b) =>
+    b.addEventListener("click", () => { chan = b.dataset.chan; paintChan(); }));
+
+  // ---- visualizer (Web Audio analyser -> amber bars) ----
+  let actx = null, analyser = null, vizRunning = false;
+  function startViz() {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) return;
+    try {
+      if (!actx) {
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = actx.createMediaElementSource(deck);
+        analyser = actx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        src.connect(analyser);
+        analyser.connect(actx.destination);
+      }
+      actx.resume();
+      if (vizRunning) return;
+      vizRunning = true;
+      const canvas = $("viz"), g = canvas.getContext("2d");
+      const dpr = devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      const W = canvas.width, H = canvas.height, mid = H / 2;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const bars = 56, step = Math.max(1, Math.floor(data.length * 0.7 / bars)), bw = W / bars;
+      (function frame() {
+        if (deck.paused) { vizRunning = false; g.clearRect(0, 0, W, H);
+          g.fillStyle = "rgba(245,165,36,.2)"; g.fillRect(0, mid - 1, W, 2); return; }
+        analyser.getByteFrequencyData(data);
+        g.clearRect(0, 0, W, H);
+        for (let i = 0; i < bars; i++) {
+          const v = data[i * step] / 255;
+          const h = Math.max(1.5 * dpr, v * mid * 0.95);
+          g.fillStyle = `rgba(245,165,36,${0.28 + v * 0.72})`;
+          g.beginPath();
+          g.roundRect(i * bw + bw * 0.22, mid - h, bw * 0.56, h * 2, bw * 0.28);
+          g.fill();
+        }
+        requestAnimationFrame(frame);
+      })();
+    } catch (e) { /* decoration only */ }
+  }
+</script>
+</body>
+</html>

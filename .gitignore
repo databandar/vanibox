@@ -10,3 +10,8 @@ static/india_states_raw.geojson
 static/india_districts_raw.geojson
 .telegram_token
 characters/*.wav
+datasets/
+radio/music/
+radio/rj/
+radio/podcast/
+radio/playlist.json

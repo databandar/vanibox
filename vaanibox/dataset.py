@@ -39,7 +39,8 @@ def has_hf_token() -> bool:
         return False
 
 
-def stream_district(config: str, limit: int = 60, min_duration: float = 3.0):
+def stream_district(config: str, limit: int = 60, min_duration: float = 3.0,
+                    require_transcript: bool = False, language: str | None = None):
     """Yield up to `limit` usable samples from one State_District config.
 
     Reads the district's parquet shards directly over HTTP range requests
@@ -94,6 +95,11 @@ def stream_district(config: str, limit: int = 60, min_duration: float = 3.0):
                         break
                     dur = row.get("duration")
                     if dur is not None and dur < min_duration:
+                        continue
+                    # cheap metadata filters BEFORE the expensive audio decode
+                    if language and row.get("language") != language:
+                        continue
+                    if require_transcript and not (row.get("transcript") or "").strip():
                         continue
                     raw = (row.get("audio") or {}).get("bytes")
                     if not raw:

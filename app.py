@@ -78,6 +78,25 @@ def studio():
     )
 
 
+@app.get("/radio")
+def radio():
+    return render_template("radio.html")
+
+
+@app.get("/radio/playlist.json")
+def radio_playlist():
+    from flask import send_from_directory
+
+    return send_from_directory(Path(app.root_path) / "radio", "playlist.json")
+
+
+@app.get("/radio/audio/<path:name>")
+def radio_audio(name):
+    from flask import send_from_directory
+
+    return send_from_directory(Path(app.root_path) / "radio", name)
+
+
 @app.get("/api/districts/<state>")
 def api_districts(state):
     return jsonify(districts_for(state))
