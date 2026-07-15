@@ -5,3 +5,4 @@ soundfile
 numpy
 huggingface_hub
 chatterbox-tts  # in-browser voice cloning (~3 GB model downloaded on first generate)
+kokoro  # generates the default Voicebox-style preset characters (scripts/make_characters.py)

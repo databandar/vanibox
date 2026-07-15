@@ -9,4 +9,4 @@ vaanibox.db
 static/india_states_raw.geojson
 static/india_districts_raw.geojson
 .telegram_token
-characters/
+characters/*.wav
