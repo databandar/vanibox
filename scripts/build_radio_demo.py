@@ -37,26 +37,22 @@ RJ_LINES = [
     ("handoff2", "en", "That compile error is not going to fix itself. But you know what helps? Lo fi. Probably. Here we go."),
 ]
 
-# Podcast hosts are district composites too — Indian accents throughout.
-PODCAST_VOICES = {
-    "arjun": ROOT / "characters" / "koriya_chhattisgarh.wav",   # male composite
-    "meera": ROOT / "characters" / "araria_bihar.wav",          # female composite
-}
-
+# Podcast hosts: Kokoro presets (the Dev & Meera voices) — the RJ keeps the
+# Indian district composite; the podcast doesn't have to.
 PODCAST = {
     "title": "Stack Underflow — Ep 1: Why your code only works at 2 AM",
-    "hosts": "Arjun & Meera (AI, district composite voices)",
+    "hosts": "Dev & Meera (AI)",
     "turns": [
-        ("arjun", "Welcome back to Stack Underflow, the podcast where two AIs pretend to understand your codebase. I'm Arjun."),
-        ("meera", "And I'm Meera. Aaj ka topic: why does code magically work at two in the morning?"),
-        ("arjun", "Simple, yaar. At 2 AM nobody is awake to ping you on Slack. Zero interruptions, full flow state."),
-        ("meera", "My theory is different. By 2 AM you have lowered your standards enough to accept the fix you rejected at 2 PM."),
-        ("arjun", "Harsh. True, but harsh. Speaking of acceptance, have you tried explaining your bug to a rubber duck?"),
-        ("meera", "Why do I need a duck? I have you. Same energy, slightly better vocabulary."),
-        ("arjun", "Fair enough. Quick note for listeners: this whole episode was generated on one laptop, voices and all. No cloud, no studio."),
-        ("meera", "Which explains the budget. Chalo, important question: chai or coffee for the 2 AM push?"),
-        ("arjun", "Coffee. But we are recording this in India, so I already know I have lost this vote."),
-        ("meera", "You have. That's it for episode one. Keep shipping, and if it works at 2 AM, don't ask why. Bye!"),
+        ("michael", "Welcome back to Stack Underflow, the podcast where two AI hosts pretend to understand your codebase. I'm Dev."),
+        ("heart", "And I'm Meera. Today's topic: why does code magically work at two in the morning?"),
+        ("michael", "Simple. At 2 AM there's nobody left awake to open Slack. Zero interruptions, infinite flow state."),
+        ("heart", "My theory is different. By 2 AM you've lowered your standards enough to accept the fix you rejected at 2 PM."),
+        ("michael", "Harsh. True, but harsh. Speaking of acceptance — have you tried explaining your bug to a rubber duck?"),
+        ("heart", "I don't need a duck, I have you. Same energy, slightly better vocabulary."),
+        ("michael", "Fair. Quick listener note — this entire episode was generated on a laptop in one take, voices and all. No cloud, no studio."),
+        ("heart", "Which explains the budget. Anyway — chai or coffee for the 2 AM push? I'm team chai, obviously."),
+        ("michael", "Coffee. But since this show is recorded in India, I already know I've lost this vote."),
+        ("heart", "You have. That's all for episode one — keep shipping, and if it works at 2 AM, don't ask why. Bye!"),
     ],
 }
 
@@ -149,20 +145,16 @@ def make_rj():
 
 
 def make_podcast():
-    from vaanibox import tts
+    from kokoro import KPipeline
 
+    pipe = KPipeline(lang_code="a")
     gap = np.zeros(int(0.45 * SR), dtype=np.float32)
     pieces = []
     for voice, line in PODCAST["turns"]:
-        sr, audio = tts.clone_speak(line, str(PODCAST_VOICES[voice]), language_id="en")
-        audio = np.asarray(audio, dtype=np.float32)
-        if sr != SR:
-            import librosa
-
-            audio = librosa.resample(audio, orig_sr=sr, target_sr=SR)
-        pieces.append(audio)
+        preset = {"michael": "am_michael", "heart": "af_heart"}[voice]
+        chunks = [np.asarray(a, dtype=np.float32) for _, _, a in pipe(line, voice=preset)]
+        pieces.append(np.concatenate(chunks))
         pieces.append(gap)
-        print(f"    {voice}: {len(audio)/SR:.1f}s")
     audio = np.concatenate(pieces)
     audio = audio / (np.max(np.abs(audio)) + 1e-6) * 0.85
     path = RADIO / "podcast" / "stack_underflow_ep1.wav"
@@ -172,17 +164,25 @@ def make_podcast():
 
 
 def main():
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--podcast-only", action="store_true",
+                    help="regenerate only the podcast + playlist (keep music and RJ)")
+    args = ap.parse_args()
+
     for d in ["music", "rj", "podcast"]:
         (RADIO / d).mkdir(parents=True, exist_ok=True)
 
-    print("music…")
-    for i, prog in enumerate(PROGRESSIONS, 1):
-        track = make_track(prog)
-        sf.write(RADIO / "music" / f"lofi_{i}.wav", track, SR)
-        print(f"  music/lofi_{i}: {len(track)/SR:.0f}s")
+    if not args.podcast_only:
+        print("music…")
+        for i, prog in enumerate(PROGRESSIONS, 1):
+            track = make_track(prog)
+            sf.write(RADIO / "music" / f"lofi_{i}.wav", track, SR)
+            print(f"  music/lofi_{i}: {len(track)/SR:.0f}s")
 
-    print("RJ segments (district composite voice)…")
-    make_rj()
+        print("RJ segments (district composite voice)…")
+        make_rj()
 
     print("podcast…")
     pod_dur = make_podcast()
