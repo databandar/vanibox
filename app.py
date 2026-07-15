@@ -159,6 +159,81 @@ def api_export():
     )
 
 
+def _upload_to_wav(file_storage) -> str:
+    """Browser recordings arrive as webm/mp4/ogg; decode to a temp wav via
+    ffmpeg. Returns the temp file path (caller deletes)."""
+    import subprocess
+    import tempfile
+
+    raw = file_storage.read()
+    if not raw:
+        raise ValueError("Empty recording.")
+    f = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    f.close()
+    p = subprocess.run(
+        ["ffmpeg", "-y", "-i", "pipe:0", "-ac", "1", "-ar", "24000", f.name],
+        input=raw, capture_output=True, timeout=60,
+    )
+    if p.returncode != 0:
+        raise ValueError("Couldn't decode that audio — try recording again.")
+    return f.name
+
+
+@app.get("/api/characters")
+def api_characters():
+    from vaanibox.voicechange import list_characters
+
+    return jsonify(list_characters())
+
+
+@app.post("/api/voicechange")
+def api_voicechange():
+    from vaanibox.voicechange import convert as vc_convert
+
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio uploaded."}), 400
+    character = request.form.get("character", "anchor")
+    try:
+        wav_path = _upload_to_wav(request.files["audio"])
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    try:
+        out_sr, out = vc_convert(wav_path, character)
+    except Exception as e:
+        return jsonify({"error": f"Conversion failed: {e}"}), 500
+    finally:
+        Path(wav_path).unlink(missing_ok=True)
+    buf = io.BytesIO()
+    sf.write(buf, out, out_sr, format="WAV")
+    buf.seek(0)
+    return send_file(buf, mimetype="audio/wav", download_name="revoiced.wav")
+
+
+@app.post("/api/translate")
+def api_translate():
+    from vaanibox.translate import speak_translated
+
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio uploaded."}), 400
+    try:
+        wav_path = _upload_to_wav(request.files["audio"])
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    try:
+        out_sr, out, english, lang = speak_translated(wav_path)
+    except Exception as e:
+        return jsonify({"error": f"Translation failed: {e}"}), 500
+    finally:
+        Path(wav_path).unlink(missing_ok=True)
+    buf = io.BytesIO()
+    sf.write(buf, out, out_sr, format="WAV")
+    buf.seek(0)
+    resp = send_file(buf, mimetype="audio/wav", download_name="translated.wav")
+    resp.headers["X-Detected-Language"] = lang
+    resp.headers["X-English-Text"] = english[:500].encode("ascii", "ignore").decode()
+    return resp
+
+
 @app.post("/api/clone")
 def api_clone():
     from vaanibox import tts

@@ -38,9 +38,15 @@ from telegram.ext import (
 from vaanibox.voicechange import convert, list_characters
 
 TOKEN_FILE = ROOT / ".telegram_token"
+TRANSLATE_KEY = "translate_en"
+TRANSLATE_LABEL = "🌍 English, my voice"
 
 # chat_id -> character key; default is the plain studio anchor
 _chosen: dict[int, str] = {}
+
+
+def _labels() -> dict[str, str]:
+    return {TRANSLATE_KEY: TRANSLATE_LABEL, **list_characters()}
 
 
 def _token() -> str:
@@ -57,7 +63,8 @@ def _token() -> str:
 
 
 def _keyboard() -> InlineKeyboardMarkup:
-    rows, row = [], []
+    rows = [[InlineKeyboardButton(TRANSLATE_LABEL, callback_data=f"char:{TRANSLATE_KEY}")]]
+    row = []
     for key, label in list_characters().items():
         row.append(InlineKeyboardButton(label, callback_data=f"char:{key}"))
         if len(row) == 2:
@@ -86,9 +93,12 @@ async def on_pick(update: Update, _: ContextTypes.DEFAULT_TYPE):
     key = q.data.split(":", 1)[1]
     _chosen[q.message.chat_id] = key
     await q.answer()
-    await q.edit_message_text(
-        f"Character set to {list_characters().get(key, key)}. Now send me a voice note!"
+    what = (
+        "Send a voice note in any language — I'll send back the same voice speaking English."
+        if key == TRANSLATE_KEY
+        else "Now send me a voice note!"
     )
+    await q.edit_message_text(f"Mode: {_labels().get(key, key)}. {what}")
 
 
 def _to_opus(wav_bytes: bytes) -> bytes | None:
@@ -103,17 +113,24 @@ def _to_opus(wav_bytes: bytes) -> bytes | None:
         return None
 
 
-def _convert_blocking(ogg_bytes: bytes, character: str) -> bytes:
-    """voice note bytes -> converted wav bytes (runs in a worker thread)."""
+def _convert_blocking(ogg_bytes: bytes, character: str) -> tuple[bytes, str]:
+    """voice note bytes -> (converted wav bytes, caption). Worker thread."""
     audio, sr = sf.read(io.BytesIO(ogg_bytes), dtype="float32")
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
     with tempfile.NamedTemporaryFile(suffix=".wav") as f:
         sf.write(f.name, audio, sr)
-        out_sr, out = convert(f.name, character)
+        if character == TRANSLATE_KEY:
+            from vaanibox.translate import speak_translated
+
+            out_sr, out, english, lang = speak_translated(f.name)
+            caption = f"🌍 {lang} → en: “{english[:900]}”"
+        else:
+            out_sr, out = convert(f.name, character)
+            caption = _labels().get(character, character)
     buf = io.BytesIO()
     sf.write(buf, out, out_sr, format="WAV")
-    return buf.getvalue()
+    return buf.getvalue(), caption
 
 
 async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -123,19 +140,17 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if voice.duration and voice.duration > 60:
         await msg.reply_text("Keep it under 60 seconds, please.")
         return
-    note = await msg.reply_text(
-        f"🎛 Re-voicing as {list_characters().get(character, character)}… (~20–40s)"
-    )
+    verb = "Translating" if character == TRANSLATE_KEY else "Re-voicing as"
+    note = await msg.reply_text(f"🎛 {verb} {_labels().get(character, character)}… (~20–40s)")
     try:
         tg_file = await context.bot.get_file(voice.file_id)
         ogg = bytes(await tg_file.download_as_bytearray())
-        wav = await asyncio.to_thread(_convert_blocking, ogg, character)
+        wav, caption = await asyncio.to_thread(_convert_blocking, ogg, character)
         opus = await asyncio.to_thread(_to_opus, wav)
         if opus:
-            await msg.reply_voice(opus, caption=list_characters().get(character, character))
+            await msg.reply_voice(opus, caption=caption)
         else:  # no ffmpeg — send as a playable audio file instead
-            await msg.reply_audio(wav, filename="voice.wav",
-                                  title=list_characters().get(character, character))
+            await msg.reply_audio(wav, filename="voice.wav", title=caption[:60])
         await note.delete()
     except Exception as e:
         await note.edit_text(f"⚠️ Conversion failed: {e}")

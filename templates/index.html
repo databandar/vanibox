@@ -195,6 +195,7 @@
   {% else %}
     <span class="signal off"><span class="led"></span>No HF token — demo only</span>
   {% endif %}
+  <a class="about tg" href="https://t.me/Bandar_voice_bot">✈️ Telegram bot</a>
   <a class="about" href="/">about</a>
 </div>
 
@@ -304,6 +305,39 @@
   <div class="panel">
     <div class="head">
       <span class="step-no">STEP 3</span>
+      <h2>Voice changer</h2>
+      <span class="hint">what the <a style="color:var(--amber)" href="https://t.me/Bandar_voice_bot">Telegram bot</a> does — try it here</span>
+    </div>
+    <div class="body">
+      <p style="color:var(--soft); margin:0 0 .9rem">
+        Record (or upload) your voice, then either re-voice it as a character —
+        including composite <em>district voices</em> blended from real Vaani speakers —
+        or hear yourself speaking <strong>English in your own voice</strong>, whatever
+        language you spoke in.
+      </p>
+      <div class="controls">
+        <button id="recBtn" class="ghost">🎤 Record</button>
+        <label class="field">or upload
+          <input type="file" id="vcFile" accept="audio/*" style="color:var(--soft); font-size:.85rem">
+        </label>
+        <label class="field">Character
+          <select id="vcCharacter"></select>
+        </label>
+        <button id="vcBtn">🎛 Re-voice</button>
+        <button id="trBtn" class="ghost">🌍 English, my voice</button>
+      </div>
+      <div class="statusline" id="vcStatus"></div>
+      <div class="result" id="vcResult">
+        <canvas id="vcViz" class="viz" aria-hidden="true"></canvas>
+        <audio id="vcPlayer" controls></audio>
+        <a class="download" id="vcDownload" download="vaanibox_voice.wav">download wav</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="head">
+      <span class="step-no">STEP 4</span>
       <h2>Export voice packs</h2>
       <span class="hint">optional — for Voicebox desktop or other tools</span>
     </div>
@@ -584,6 +618,93 @@
   })();
   viz.attach($("player"), $("playerViz"));
   viz.attach($("clonePlayer"), $("cloneViz"));
+  viz.attach($("vcPlayer"), $("vcViz"));
+
+  // ---- voice changer: record/upload -> re-voice or translate ----
+  let recorder = null, recordedBlob = null;
+
+  (async () => {
+    const chars = await (await fetch("/api/characters")).json();
+    $("vcCharacter").innerHTML = Object.entries(chars)
+      .map(([k, label]) => `<option value="${k}">${label}</option>`).join("");
+  })();
+
+  $("vcFile").addEventListener("change", () => {
+    recordedBlob = $("vcFile").files[0] || null;
+    if (recordedBlob) status($("vcStatus"), `Loaded ${recordedBlob.name} — pick a character and go.`);
+  });
+
+  $("recBtn").addEventListener("click", async () => {
+    if (recorder && recorder.state === "recording") {
+      recorder.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        recordedBlob = new Blob(chunks, { type: recorder.mimeType });
+        $("recBtn").textContent = "🎤 Record";
+        $("recBtn").classList.add("ghost");
+        status($("vcStatus"), `Recorded ${(recordedBlob.size / 1024).toFixed(0)} KB — pick a character and go.`);
+      };
+      recorder.start();
+      $("recBtn").textContent = "⏹ Stop";
+      $("recBtn").classList.remove("ghost");
+      status($("vcStatus"), "Recording — speak, then press Stop", false, true);
+    } catch (e) {
+      status($("vcStatus"), `Microphone unavailable: ${e.message}. Use the upload option instead.`, true);
+    }
+  });
+
+  async function sendVoice(url, extra, btn, busyMsg) {
+    if (!recordedBlob) {
+      status($("vcStatus"), "Record or upload some audio first.", true);
+      return;
+    }
+    btn.disabled = true;
+    $("vcResult").classList.remove("active");
+    const t0 = Date.now();
+    const tick = setInterval(() =>
+      status($("vcStatus"), `${busyMsg} — ${Math.round((Date.now() - t0) / 1000)}s`, false, true), 1000);
+    status($("vcStatus"), busyMsg, false, true);
+    try {
+      const form = new FormData();
+      form.append("audio", recordedBlob, "voice.webm");
+      for (const [k, v] of Object.entries(extra)) form.append(k, v);
+      const res = await fetch(url, { method: "POST", body: form });
+      clearInterval(tick);
+      if (!res.ok) {
+        const isJson = (res.headers.get("content-type") || "").includes("json");
+        status($("vcStatus"), isJson ? (await res.json()).error : `Server error (HTTP ${res.status}).`, true);
+        return;
+      }
+      const english = res.headers.get("X-English-Text");
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      $("vcPlayer").src = objUrl;
+      $("vcDownload").href = objUrl;
+      $("vcResult").classList.add("active");
+      $("vcPlayer").play();
+      status($("vcStatus"),
+        english ? `Done in ${Math.round((Date.now() - t0) / 1000)}s — “${english}”`
+                : `Done in ${Math.round((Date.now() - t0) / 1000)}s.`);
+    } catch (e) {
+      clearInterval(tick);
+      status($("vcStatus"), `Request failed: ${e}`, true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $("vcBtn").addEventListener("click", () =>
+    sendVoice("/api/voicechange", { character: $("vcCharacter").value }, $("vcBtn"),
+      `Re-voicing as ${$("vcCharacter").selectedOptions[0].textContent}`));
+  $("trBtn").addEventListener("click", () =>
+    sendVoice("/api/translate", {}, $("trBtn"), "Transcribing, translating, and re-voicing"));
 
   $("exportBtn").addEventListener("click", async () => {
     const ids = [...document.querySelectorAll(".pick:checked")].map((c) => c.dataset.id);
