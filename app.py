@@ -73,7 +73,7 @@ def studio():
         states=STATES,
         districts=districts_for("Bihar"),
         district_counts={s: len(districts_for(s)) for s in STATES},
-        curated_states=sorted({p.state for p in _profiles.values() if p.state}),
+        curated_configs=sorted({f"{p.state}_{p.district}" for p in _profiles.values() if p.state and p.district}),
         hf_ok=has_hf_token(),
     )
 

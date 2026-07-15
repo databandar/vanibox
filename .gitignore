@@ -7,3 +7,4 @@ __pycache__/
 .pytest_cache/
 vaanibox.db
 static/india_states_raw.geojson
+static/india_districts_raw.geojson

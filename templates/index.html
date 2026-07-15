@@ -96,7 +96,7 @@
   /* ---------- accent atlas (real state boundaries) ---------- */
   .atlas-layout { display: flex; gap: 1.6rem; align-items: flex-start; flex-wrap: wrap; }
   .atlas {
-    width: 300px; flex-shrink: 0; padding: .8rem; background: var(--inset);
+    width: 340px; flex-shrink: 0; padding: .8rem; background: var(--inset);
     border: 1px solid var(--line); border-radius: 4px;
   }
   .atlas svg { display: block; width: 100%; height: auto; }
@@ -105,7 +105,7 @@
     text-transform: uppercase; color: var(--faint); margin: .5rem 0 0; text-align: center;
   }
   .atlas-side { flex: 1; min-width: 20rem; }
-  .st { fill: var(--panel); stroke: var(--line); stroke-width: .7; }
+  .st { fill: var(--panel); stroke: var(--line); stroke-width: .35; }
   .st.vaani { cursor: pointer; }
   .st.vaani:hover { fill: #2E2419; stroke: var(--amber-dim); }
   .st.lit { fill: #33270F; stroke: var(--amber-dim); }
@@ -324,13 +324,20 @@
 <script>
   const $ = (id) => document.getElementById(id);
   const DISTRICT_COUNTS = {{ district_counts | tojson }};
-  let curatedStates = new Set({{ curated_states | tojson }});
+  let curatedConfigs = new Set({{ curated_configs | tojson }});
 
-  // Accent Atlas: real state boundaries (datta07/INDIAN-SHAPEFILES),
-  // preprocessed by scripts/build_map.py into compact SVG paths.
+  // Accent Atlas: real district boundaries (datta07/INDIAN-SHAPEFILES),
+  // preprocessed by scripts/build_district_map.py into compact SVG paths.
+  // Each shape's id is a Vaani "State_District" config (null = not in Vaani).
   const SVG_NS = "http://www.w3.org/2000/svg";
+
+  async function loadDistricts(state) {
+    const districts = await (await fetch(`/api/districts/${state}`)).json();
+    $("district").innerHTML = districts.map((d) => `<option>${d}</option>`).join("");
+  }
+
   async function buildAtlas() {
-    const map = await (await fetch("/static/india_map.json")).json();
+    const map = await (await fetch("/static/india_districts_map.json")).json();
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", map.viewBox);
     for (const st of map.states) {
@@ -339,16 +346,19 @@
       path.classList.add("st", st.id ? "vaani" : "dim");
       const title = document.createElementNS(SVG_NS, "title");
       title.textContent = st.id
-        ? `${st.name} — ${DISTRICT_COUNTS[st.id]} district(s) in Vaani`
-        : `${st.name} — not covered by Vaani yet`;
+        ? `${st.name}, ${st.st} — in Vaani, click to select`
+        : `${st.name}, ${st.st} — not covered by Vaani yet`;
       path.appendChild(title);
       if (st.id) {
-        path.dataset.state = st.id;
+        path.dataset.config = st.id;
         path.setAttribute("role", "option");
         path.setAttribute("tabindex", "0");
-        const pick = () => {
-          $("state").value = st.id;
-          $("state").dispatchEvent(new Event("change"));
+        const pick = async () => {
+          const [state, district] = st.id.split(/_(.+)/);
+          $("state").value = state;
+          await loadDistricts(state);
+          $("district").value = district;
+          paintAtlas();
         };
         path.addEventListener("click", pick);
         path.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
@@ -360,9 +370,10 @@
   }
 
   function paintAtlas() {
+    const current = `${$("state").value}_${$("district").value}`;
     document.querySelectorAll(".st.vaani").forEach((p) => {
-      p.classList.toggle("active", p.dataset.state === $("state").value);
-      p.classList.toggle("lit", curatedStates.has(p.dataset.state));
+      p.classList.toggle("active", p.dataset.config === current);
+      p.classList.toggle("lit", curatedConfigs.has(p.dataset.config));
     });
   }
   let selectedVoice = null;
@@ -374,10 +385,10 @@
   };
 
   $("state").addEventListener("change", async () => {
+    await loadDistricts($("state").value);
     paintAtlas();
-    const districts = await (await fetch(`/api/districts/${$("state").value}`)).json();
-    $("district").innerHTML = districts.map((d) => `<option>${d}</option>`).join("");
   });
+  $("district").addEventListener("change", paintAtlas);
   buildAtlas();
 
   function selectRow(tr, s, { play = false } = {}) {
@@ -435,7 +446,7 @@
       const data = await res.json();
       if (!res.ok) { status($("status"), data.error, true); return; }
       renderTable(data.speakers);
-      data.speakers.forEach((s) => { if (s.state) curatedStates.add(s.state); });
+      data.speakers.forEach((s) => { if (s.state && s.district) curatedConfigs.add(`${s.state}_${s.district}`); });
       paintAtlas();
       status($("status"), data.status + " Click ▶ to listen; the top voice is preselected.");
     } catch (e) {
