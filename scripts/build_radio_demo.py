@@ -37,19 +37,26 @@ RJ_LINES = [
     ("handoff2", "en", "That compile error is not going to fix itself. But you know what helps? Lo fi. Probably. Here we go."),
 ]
 
+# Podcast hosts are district composites too — Indian accents throughout.
+PODCAST_VOICES = {
+    "arjun": ROOT / "characters" / "koriya_chhattisgarh.wav",   # male composite
+    "meera": ROOT / "characters" / "araria_bihar.wav",          # female composite
+}
+
 PODCAST = {
     "title": "Stack Underflow — Ep 1: Why your code only works at 2 AM",
+    "hosts": "Arjun & Meera (AI, district composite voices)",
     "turns": [
-        ("michael", "Welcome back to Stack Underflow, the podcast where two AI hosts pretend to understand your codebase. I'm Dev."),
-        ("heart", "And I'm Meera. Today's topic: why does code magically work at two in the morning?"),
-        ("michael", "Simple. At 2 AM there's nobody left awake to open Slack. Zero interruptions, infinite flow state."),
-        ("heart", "My theory is different. By 2 AM you've lowered your standards enough to accept the fix you rejected at 2 PM."),
-        ("michael", "Harsh. True, but harsh. Speaking of acceptance — have you tried explaining your bug to a rubber duck?"),
-        ("heart", "I don't need a duck, I have you. Same energy, slightly better vocabulary."),
-        ("michael", "Fair. Quick listener note — this entire episode was generated on a laptop in one take, voices and all. No cloud, no studio."),
-        ("heart", "Which explains the budget. Anyway — chai or coffee for the 2 AM push? I'm team chai, obviously."),
-        ("michael", "Coffee. But since this show is recorded in India, I already know I've lost this vote."),
-        ("heart", "You have. That's all for episode one — keep shipping, and if it works at 2 AM, don't ask why. Bye!"),
+        ("arjun", "Welcome back to Stack Underflow, the podcast where two AIs pretend to understand your codebase. I'm Arjun."),
+        ("meera", "And I'm Meera. Aaj ka topic: why does code magically work at two in the morning?"),
+        ("arjun", "Simple, yaar. At 2 AM nobody is awake to ping you on Slack. Zero interruptions, full flow state."),
+        ("meera", "My theory is different. By 2 AM you have lowered your standards enough to accept the fix you rejected at 2 PM."),
+        ("arjun", "Harsh. True, but harsh. Speaking of acceptance, have you tried explaining your bug to a rubber duck?"),
+        ("meera", "Why do I need a duck? I have you. Same energy, slightly better vocabulary."),
+        ("arjun", "Fair enough. Quick note for listeners: this whole episode was generated on one laptop, voices and all. No cloud, no studio."),
+        ("meera", "Which explains the budget. Chalo, important question: chai or coffee for the 2 AM push?"),
+        ("arjun", "Coffee. But we are recording this in India, so I already know I have lost this vote."),
+        ("meera", "You have. That's it for episode one. Keep shipping, and if it works at 2 AM, don't ask why. Bye!"),
     ],
 }
 
@@ -142,16 +149,20 @@ def make_rj():
 
 
 def make_podcast():
-    from kokoro import KPipeline
+    from vaanibox import tts
 
-    pipe = KPipeline(lang_code="a")
     gap = np.zeros(int(0.45 * SR), dtype=np.float32)
     pieces = []
     for voice, line in PODCAST["turns"]:
-        preset = {"michael": "am_michael", "heart": "af_heart"}[voice]
-        chunks = [np.asarray(a, dtype=np.float32) for _, _, a in pipe(line, voice=preset)]
-        pieces.append(np.concatenate(chunks))
+        sr, audio = tts.clone_speak(line, str(PODCAST_VOICES[voice]), language_id="en")
+        audio = np.asarray(audio, dtype=np.float32)
+        if sr != SR:
+            import librosa
+
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=SR)
+        pieces.append(audio)
         pieces.append(gap)
+        print(f"    {voice}: {len(audio)/SR:.1f}s")
     audio = np.concatenate(pieces)
     audio = audio / (np.max(np.abs(audio)) + 1e-6) * 0.85
     path = RADIO / "podcast" / "stack_underflow_ep1.wav"
@@ -179,16 +190,17 @@ def main():
     music_files = sorted(
         p.name for p in (RADIO / "music").iterdir() if p.suffix.lower() in (".wav", ".mp3", ".m4a")
     )
-    # radio rotation: rj intro, then alternate music and rj bits
+    # radio rotation: alternate RJ bits with every track in music/ — drop your
+    # own files there and re-run; more music than RJ lines just recycles the RJ.
     rj_order = ["intro", "handoff1", "focus", "trivia", "night", "handoff2"]
     rotation = []
-    mi = 0
-    for name in rj_order:
-        rotation.append({"type": "rj", "file": f"rj/{name}.wav", "label": "RJ Vaani · Nagpur composite"})
+    for i in range(max(len(rj_order), len(music_files) or 1)):
+        rotation.append({"type": "rj", "file": f"rj/{rj_order[i % len(rj_order)]}.wav",
+                         "label": "RJ Vaani · Nagpur composite"})
         if music_files:
-            rotation.append({"type": "music", "file": f"music/{music_files[mi % len(music_files)]}",
-                             "label": f"VaaniBox lo-fi · {music_files[mi % len(music_files)].rsplit('.',1)[0]}"})
-            mi += 1
+            track = music_files[i % len(music_files)]
+            rotation.append({"type": "music", "file": f"music/{track}",
+                             "label": track.rsplit(".", 1)[0].replace("_", " ")})
 
     playlist = {
         "radio": rotation,
@@ -196,7 +208,7 @@ def main():
             "title": PODCAST["title"],
             "file": "podcast/stack_underflow_ep1.wav",
             "duration": round(pod_dur),
-            "hosts": "Dev & Meera (AI)",
+            "hosts": PODCAST["hosts"],
         }],
     }
     (RADIO / "playlist.json").write_text(json.dumps(playlist, indent=2))

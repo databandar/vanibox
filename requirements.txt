@@ -1,8 +1,7 @@
 flask>=3
-gradio>=5  # only for the legacy gradio_app.py
-datasets>=3
-soundfile
 numpy
-huggingface_hub
-chatterbox-tts  # in-browser voice cloning (~3 GB model downloaded on first generate)
-kokoro  # generates the default Voicebox-style preset characters (scripts/make_characters.py)
+soundfile
+librosa
+chatterbox-tts   # RJ + podcast voices (clones from district composites)
+huggingface_hub  # streaming Vaani when curating new district voices
+pyarrow          # direct parquet reads from the Vaani dataset

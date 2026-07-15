@@ -1,56 +1,65 @@
-# 🇮🇳 VaaniBox
+# 📻 Radio Vaani
 
-**Every district of India, as a voice you can use.**
+**An AI radio station and fake podcast in real Indian district voices — for people who ship.**
 
-VaaniBox bridges two open projects:
+A late-night coding companion that runs entirely on your machine. The RJ and podcast
+hosts speak in **composite voices built from real speakers in the
+[Vaani dataset](https://huggingface.co/datasets/ARTPARK-IISc/Vaani)** (ARTPARK/IISc,
+CC-BY-4.0) — a blend of 2–3 speakers per district, so every voice carries an authentic
+regional accent while being no single real person. No celebrity cloning, ever.
 
-- **[Vaani](https://huggingface.co/datasets/ARTPARK-IISc/Vaani)** (ARTPARK / IISc Bangalore) — 31,000+ hours of spontaneous speech from **156K speakers across 165 districts and 106 languages**, CC-BY-4.0.
-- **[Voicebox](https://github.com/jamiepine/voicebox)** (jamiepine) — the open-source, local-first AI voice studio with zero-shot voice cloning (Chatterbox, Qwen3-TTS, and more), MIT.
+Unlike cloud AI-radio products (radio69.ai, airadiobot, NotebookLM-style podcast
+generators): local-first, Indian-accented, developer-targeted, free.
 
-Vaani has the voices; Voicebox has the cloning engines. VaaniBox streams Vaani, **auto-curates clone-quality reference clips** (duration, loudness, SNR, speech-ratio, clipping heuristics — no model downloads needed), and **exports Voicebox-ready voice packs**. The result: text-to-speech in authentic regional Indian accents at *district-level* granularity — something no commercial TTS offers.
-
-## Quickstart
+## Run it
 
 ```bash
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
-.venv/bin/python app.py          # Flask studio at http://127.0.0.1:5050
+.venv/bin/python scripts/build_radio_demo.py   # pre-render RJ, podcast, lo-fi (~10 min first run)
+.venv/bin/python app.py                        # → http://127.0.0.1:5051
 ```
 
-(The original Gradio UI still works: `.venv/bin/python gradio_app.py` → port 7860.)
+Two channels:
+- **📻 Radio** — RJ Vaani (Nagpur composite) does Hinglish patter, focus-block calls,
+  and song handoffs between tracks, looping forever.
+- **🎙 Podcast** — *Stack Underflow*: Arjun (Koriya composite) and Meera (Araria
+  composite) on why your code only works at 2 AM.
 
-**No Hugging Face account?** Click **"Demo mode"** in the app — it runs the full curate → preview → export pipeline on synthetic voices.
+## Your music
 
-**With real Vaani data:** accept the terms at [the dataset page](https://huggingface.co/datasets/ARTPARK-IISc/Vaani) (free, auto-approved), then either run `hf auth login` or put a read token in a `.hf_token` file in the project root (gitignored). Pick any state/district in the app — audio is streamed, nothing near the 3.6 TB dataset ever hits your disk.
+Drop `.mp3`/`.wav` files into `radio/music/` and re-run `scripts/build_radio_demo.py` —
+every track enters the rotation with RJ handoffs between them. The bundled procedural
+lo-fi is just placeholder. (Use music you own or that is openly licensed.)
 
-## What the app does
+## Growing the voice cast
 
-1. **Explore & curate** — pick a state and district (165 available), stream N clips, and get a ranked table of speakers whose clips pass cloning-quality thresholds. Click a row to listen and select it.
-2. **Speak in this voice** — type any text (Hindi, Bengali, Tamil, … or English) and generate it in the selected speaker's voice, entirely in the browser. Cloning runs locally on Chatterbox Multilingual (PyTorch on Apple-Silicon MPS); the ~3 GB model downloads once on first generate.
-3. **Export voice packs (optional)** — writes `voice_packs/<Language_District_Speaker>/` folders containing the best reference wavs, `voice.json` metadata, and CC-BY attribution, for the Voicebox desktop app or any other cloning TTS.
-
-## Project layout
-
-```
-app.py                    Flask studio (explore / export / clone API + web UI)
-templates/index.html      The studio front-end (vanilla JS)
-gradio_app.py             Legacy Gradio version of the same studio
-vaanibox/districts.py     All 165 State_District configs (auto-generated from HF API)
-vaanibox/dataset.py       Gated streaming access to Vaani
-vaanibox/curate.py        Clip quality scoring + per-speaker profiling (pure numpy)
-vaanibox/export.py        Voice pack writer w/ CC-BY attribution
-vaanibox/tts.py           Optional Chatterbox cloning preview
-scripts/make_demo_data.py Synthetic speakers for offline demo
-tests/test_curate.py      Scorer sanity tests (.venv/bin/python tests/test_curate.py)
+```bash
+.venv/bin/python scripts/curate_district.py Maharashtra_Pune   # stream + curate a district
+.venv/bin/python scripts/make_district_characters.py           # rebuild composite voices
 ```
 
-## Where this can go
+Curation streams the gated Vaani dataset (accept the terms on Hugging Face, put a read
+token in `.hf_token`), scores clips for cloning quality, and stores speakers in a local
+SQLite library. Composites blend up to three same-gender speakers per district.
 
-- **Accent Atlas** — clickable map of India; hear each district speak.
-- **Fine-tuned Indian TTS engine** — use Vaani's 2,043 transcribed hours to fine-tune Chatterbox/Qwen3-TTS and contribute an "Indian languages" engine back to Voicebox.
-- **Dialect-aware dictation** — fine-tune Whisper on Vaani to fix Voicebox dictation for Indian-accent English and code-switched speech.
-- **Language preservation** — many of Vaani's 106 languages (Mundari, Kurukh, Bhili…) have *zero* TTS support today; curated packs give them a synthetic voice for the first time.
+## Layout
 
-## Licensing
+```
+app.py                              Flask server (radio page + audio)
+templates/radio.html                the on-air console UI
+scripts/build_radio_demo.py         pre-renders RJ, podcast, music, playlist.json
+scripts/curate_district.py          add a district's speakers to the library
+scripts/make_district_characters.py library -> composite character voices
+vaanibox/                           voice factory: Vaani streaming, clip scoring,
+                                    SQLite library, Chatterbox TTS wrapper
+```
 
-Vaani audio is CC-BY-4.0 — exported packs include `ATTRIBUTION.txt`. Voicebox is MIT. **Ethics note:** these are real people's voices; use packs for accent-authentic narration, research, and accessibility — not impersonation. Voice packs are for cloning *accent and texture into new speech*, and Vaani speakers consented to research/commercial dataset use, but be thoughtful.
+Earlier incarnations of this repo (voice-cloning studio, Telegram voice-changer bot,
+Accent Atlas maps) live in git history before the radio pivot.
+
+## License & ethics
+
+Code MIT. Vaani audio CC-BY-4.0 (attribution in exported audio metadata). Voices are
+composites of consenting dataset speakers — never impersonations of identifiable
+people. Generated speech is watermarked by Chatterbox's built-in Perth watermarker.
